@@ -1,0 +1,11 @@
+{
+  "target_user": "MainAccount",
+  "channel": "shoovy",
+  "chatroom_id": "29834074",
+  "workers": ["Worker1", "Worker2"],
+  "keep_float": {"Worker1": 0, "Worker2": 0},
+  "min_tip": 50,
+  "cycle_minutes": 30,
+  "post_gap_seconds": 8,
+  "tip_cooldown_hrs": 36
+}

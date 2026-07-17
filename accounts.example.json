@@ -1,0 +1,24 @@
+[
+  {
+    "name": "MainAccount",
+    "shoovy_session": "PASTE_THE_shoovy.wtf_session_COOKIE_OF_YOUR_MAIN_ACCOUNT"
+  },
+  {
+    "name": "Worker1",
+    "bearer": "PASTE_THE_VALUE_OF_THE_kick.com_session_token_COOKIE",
+    "cookies": [
+      {"name": "session_token", "value": "..."},
+      {"name": "kick_session", "value": "..."}
+    ],
+    "shoovy_session": "PASTE_THE_shoovy.wtf_session_COOKIE_OF_Worker1"
+  },
+  {
+    "name": "Worker2",
+    "bearer": "PASTE_THE_VALUE_OF_THE_kick.com_session_token_COOKIE",
+    "cookies": [
+      {"name": "session_token", "value": "..."},
+      {"name": "kick_session", "value": "..."}
+    ],
+    "shoovy_session": "PASTE_THE_shoovy.wtf_session_COOKIE_OF_Worker2"
+  }
+]

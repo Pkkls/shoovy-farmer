@@ -1,0 +1,12 @@
+{
+  "channel": "shoovy",
+  "chatroom_id": "29834074",
+  "message": "!fish",
+  "workers": ["Worker1", "Worker2"],
+  "hard_floor_seconds": 60,
+  "jitter_seconds": 120,
+  "stagger_max_seconds": 180,
+  "error_backoff_minutes": 45,
+  "disabled_recheck_minutes": 20,
+  "fallback_interval_minutes": 16
+}

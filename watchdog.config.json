@@ -1,0 +1,10 @@
+{
+  "poll_seconds": 15,
+  "stop_flag": "data/STOP_ALL",
+  "log_file": "data/watchdog.log",
+  "heartbeat_minutes": 15,
+  "watch": [
+    {"name": "fisher", "log": "data/fisher.log", "max_per_min": 6},
+    {"name": "econ", "log": "data/econ.log", "max_per_min": 6}
+  ]
+}

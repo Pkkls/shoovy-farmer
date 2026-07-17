@@ -1,0 +1,11 @@
+# Your credentials — NEVER commit these
+accounts.json
+
+# Runtime data (logs, state, stop flag, bot status)
+data/
+
+# Compiled binaries (rebuild with build.bat)
+bin/
+*.exe
+
+*.log

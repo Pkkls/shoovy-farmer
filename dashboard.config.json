@@ -1,0 +1,9 @@
+{
+  "port": 8088,
+  "accounts_file": "accounts.json",
+  "econ_state_file": "data/econ_state.json",
+  "status_file": "data/status.json",
+  "stop_flag": "data/STOP_ALL",
+  "target": "MainAccount",
+  "tip_cooldown_hrs": 36
+}
