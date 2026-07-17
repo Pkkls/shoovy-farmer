@@ -5,6 +5,7 @@
   "heartbeat_minutes": 15,
   "watch": [
     {"name": "fisher", "log": "data/fisher.log", "max_per_min": 6},
-    {"name": "econ", "log": "data/econ.log", "max_per_min": 6}
+    {"name": "econ", "log": "data/econ.log", "max_per_min": 6},
+    {"name": "trader", "log": "data/trader.log", "max_per_min": 20}
   ]
 }

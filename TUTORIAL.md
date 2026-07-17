@@ -76,6 +76,9 @@ Open these small files in Notepad and change only the names to match your `accou
 - **`econ.config.json`** → `"workers"`: same worker names. `"target_user"`: your **main account's
   Kick username** (this is who receives the tips).
 - **`dashboard.config.json`** → `"target"`: your main account name (as written in accounts.json).
+- **`trader.config.json`** → `"account"`: the worker account whose credits the trader may use.
+  Leave `"live": false` for now (PAPER mode: it watches the market and logs the trades it would
+  make, without spending anything). See "Advanced" below to turn it on for real.
 
 Everything else (the channel, the cooldowns, the anti-spam limits) is already set correctly for
 shoovy. You do not need to touch it.
@@ -122,9 +125,27 @@ normal and on purpose, to avoid spam). Check `data\fisher.log` and `data\econ.lo
 - **The dashboard page does not open:** make sure the bots are running (`run.bat` shows output),
   and that you typed `http://127.0.0.1:8088` exactly.
 
+## Advanced — turn on live trading (optional, riskier)
+
+The `trader` bot plays the in-game stock market with a mean-reversion strategy (it buys a ticker
+only when it has dropped sharply below its recent average, and sells when it comes back). By
+default it runs in **PAPER mode**: it logs the trades it would make in `data\trader.log` but does
+not spend credits.
+
+To watch it first: leave `"live": false`, let it run a day, and read `data\trader.log`. If the
+simulated results look good and you accept the risk, edit `trader.config.json`, set
+`"live": true`, and restart (STOP then Start on the dashboard). Keep `size_credits` small.
+
+Be honest with yourself: the market charges a 1% fee per round-trip, so trading is close to
+break-even and can lose credits. The safe earning loop is fishing + daily + tips; trading is a
+bonus, not a money printer. The `watchdog` still protects you from runaway behavior.
+
+To read how the market and the strategy actually work, see **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+
 ## What it will and will not do
 
-It **will**: fish, claim daily, and funnel worker credits to your main account, quietly, 24/7.
+It **will**: fish, claim daily, funnel worker credits to your main account, and (optionally) trade
+the stock market in paper or live mode, quietly, 24/7.
 
-It **will not**: touch your main account, trade the stock market, or do anything fast/spammy. Those
-are deliberate choices to keep your accounts safe.
+It **will not**: touch your main account, or do anything fast/spammy. Those are deliberate choices
+to keep your accounts safe.

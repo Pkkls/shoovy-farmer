@@ -20,6 +20,7 @@ type cfg struct {
 	Port           int     `json:"port"`
 	AccountsFile   string  `json:"accounts_file"`
 	EconStateFile  string  `json:"econ_state_file"`
+	TradesFile     string  `json:"trades_file"`
 	StatusFile     string  `json:"status_file"`
 	StopFlag       string  `json:"stop_flag"`
 	Target         string  `json:"target"`
@@ -28,7 +29,7 @@ type cfg struct {
 
 func loadCfg() cfg {
 	c := cfg{Port: 8088, AccountsFile: "accounts.json", EconStateFile: "data/econ_state.json",
-		StatusFile: "data/status.json", StopFlag: "data/STOP_ALL", Target: "main", TipCooldownHrs: 36}
+		TradesFile: "data/trades.jsonl", StatusFile: "data/status.json", StopFlag: "data/STOP_ALL", Target: "main", TipCooldownHrs: 36}
 	p := os.Getenv("DASHBOARD_CONFIG")
 	if p == "" {
 		p = "dashboard.config.json"
@@ -91,6 +92,32 @@ func esc(s string) string {
 	s = strings.ReplaceAll(s, "&", "&amp;")
 	s = strings.ReplaceAll(s, "<", "&lt;")
 	return strings.ReplaceAll(s, ">", "&gt;")
+}
+
+// lastTrades reads the trader's trades.jsonl: returns the last n entries and the total realized PnL.
+func lastTrades(path string, n int) ([]map[string]any, float64) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, 0
+	}
+	var all []map[string]any
+	var realized float64
+	for _, ln := range strings.Split(strings.TrimSpace(string(b)), "\n") {
+		var m map[string]any
+		if json.Unmarshal([]byte(ln), &m) != nil {
+			continue
+		}
+		if m["event"] == "sell" {
+			if p, ok := m["pnl"].(float64); ok {
+				realized += p
+			}
+		}
+		all = append(all, m)
+	}
+	if len(all) > n {
+		all = all[len(all)-n:]
+	}
+	return all, realized
 }
 
 const pageCSS = `
@@ -180,7 +207,7 @@ func handler(c cfg) http.HandlerFunc {
 		var status map[string]bool
 		loadJSON(c.StatusFile, &status)
 		sb.WriteString(`<div class="card"><div class="ttl">Bots</div><table><tbody>`)
-		for _, b := range []string{"fisher", "econ", "watchdog", "dashboard"} {
+		for _, b := range []string{"fisher", "econ", "trader", "collector", "watchdog", "dashboard"} {
 			up := status[b] || b == "dashboard"
 			color, label := "#ff5d57", "down"
 			if up {
@@ -189,6 +216,31 @@ func handler(c cfg) http.HandlerFunc {
 			sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td class="num"><span class="dot" style="background:%s"></span> %s</td></tr>`, b, color, label))
 		}
 		sb.WriteString(`</tbody></table></div>`)
+
+		// trader — shown only if it has traded (PAPER or LIVE both write data/trades.jsonl)
+		trades, realized := lastTrades(c.TradesFile, 10)
+		if len(trades) > 0 {
+			rc := "up"
+			if realized < 0 {
+				rc = "down"
+			}
+			sb.WriteString(fmt.Sprintf(`<div class="card span"><div class="ttl">Trader &middot; realized PnL <span class="%s">%+.1f</span></div><table><thead><tr><th>Time</th><th>Action</th><th>Ticker</th><th class="num">Price</th><th class="num">dev%%</th><th class="num">PnL</th></tr></thead><tbody>`, rc, realized))
+			for i := len(trades) - 1; i >= 0; i-- {
+				m := trades[i]
+				ts := ""
+				if t, ok := m["ts"].(float64); ok {
+					ts = time.Unix(int64(t), 0).Format("15:04")
+				}
+				ev, _ := m["event"].(string)
+				sym, _ := m["symbol"].(string)
+				pnl := ""
+				if p, ok := m["pnl"].(float64); ok {
+					pnl = fmt.Sprintf("%+.1f", p)
+				}
+				sb.WriteString(fmt.Sprintf(`<tr><td class="mut tnum">%s</td><td>%s</td><td>%s</td><td class="num">%v</td><td class="num mut">%v</td><td class="num">%s</td></tr>`, ts, esc(ev), esc(sym), m["price"], m["dev"], pnl))
+			}
+			sb.WriteString(`</tbody></table></div>`)
+		}
 
 		var econState map[string]int64
 		loadJSON(c.EconStateFile, &econState)

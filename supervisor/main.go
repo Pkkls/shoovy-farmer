@@ -28,6 +28,8 @@ type bot struct {
 var bots = []bot{
 	{"fisher", filepath.Join("bin", "fisher.exe"), []string{"FISHD_CONFIG=fisher.config.json", "FISHD_ACCOUNTS=accounts.json"}},
 	{"econ", filepath.Join("bin", "econ.exe"), []string{"ECON_CONFIG=econ.config.json", "ECON_ACCOUNTS=accounts.json", "ECON_STATE=data/econ_state.json"}},
+	{"trader", filepath.Join("bin", "trader.exe"), []string{"TRADER_CONFIG=trader.config.json", "TRADER_ACCOUNTS=accounts.json"}},
+	{"collector", filepath.Join("bin", "collector.exe"), []string{"COLLECTOR_DIR=data"}},
 	{"watchdog", filepath.Join("bin", "watchdog.exe"), []string{"WATCHDOG_CONFIG=watchdog.config.json"}},
 	{"dashboard", filepath.Join("bin", "dashboard.exe"), []string{"DASHBOARD_CONFIG=dashboard.config.json"}},
 }

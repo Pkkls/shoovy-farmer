@@ -20,14 +20,16 @@ to rent. You fill in your accounts once, run one installer, and it keeps going i
 |-----|-----|
 | **fisher** | Casts `!fish` in chat on each worker account, on the real game cooldown, spread out so accounts never post at the same time. Strong anti-spam guards. |
 | **econ** | Claims the free `!daily` and sends each worker's spare credits to your **main account** with `!tip`, at most once every 36 hours (discreet). |
+| **trader** | Mean-reversion bot for the in-game stock market. **Ships in PAPER mode** (it only logs the trades it *would* make). Turn it live only when you trust it. Advanced, optional. |
+| **collector** | Logs market prices + events to `data/` so you can study/backtest the market. Passive, harmless. |
 | **watchdog** | Safety guard. If any bot ever starts spamming, it logs an alert and hits the kill-switch automatically. |
-| **dashboard** | A local web page (`http://127.0.0.1:8088`) showing balances, the main account total, and a big **STOP** button. |
+| **dashboard** | A local web page (`http://127.0.0.1:8088`) showing balances, the main account total, live trades/PnL, and a big **STOP** button. |
 | **supervisor** | Starts all of the above, restarts anything that crashes, and honors the STOP button. This is what runs at Windows startup. |
 
 Your **main account** only ever *receives* tips. No bot posts or trades on it.
 
-Trading the in-game stock market is intentionally **not** included here (it is riskier and more
-advanced); it lives in the original board-based repo.
+Want to understand how it all works (the market, the strategy, the safety design, and the story
+of a spam bug and its fix)? Read **[ARCHITECTURE.md](ARCHITECTURE.md)** — it documents everything.
 
 ---
 

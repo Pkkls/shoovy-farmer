@@ -1,0 +1,13 @@
+{
+  "account": "Worker1",
+  "watch": ["GAMBA", "CHAT", "STRMR", "WINS", "LOSS"],
+  "ma_window": 20,
+  "entry_dev": 0.03,
+  "exit_dev": 0.005,
+  "max_hold_s": 360,
+  "size_credits": 150,
+  "max_positions": 6,
+  "poll_seconds": 15,
+  "fee_pct": 1,
+  "live": false
+}
