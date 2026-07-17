@@ -344,7 +344,7 @@ func reconcile(sr *stocksResp, watch map[string]bool, positions map[string]*open
 	}
 	for sym := range positions {
 		if _, ok := held[sym]; !ok {
-			delete(positions, sym) // serveur ne detient plus -> stop suivi
+			delete(positions, sym) // server no longer holds it -> stop tracking
 		}
 	}
 	for sym, p := range held {
@@ -460,7 +460,7 @@ func main() {
 					if cfg.Live {
 						tr := doSellAll(cfg.Session, sym)
 						lastTrade = time.Now()
-						acted = true // meme sur echec: stoppe le cycle, evite la rafale de 400
+						acted = true // even on failure: stop the cycle, avoid a burst of 400s
 						if tr == nil {
 							continue // reconcile will re-adopt/purge next cycle
 						}
@@ -504,7 +504,7 @@ func main() {
 				if cfg.Live {
 					tr := doBuy(cfg.Session, sym, cfg.SizeCredits)
 					lastTrade = time.Now()
-					acted = true // meme sur echec: stoppe le cycle
+					acted = true // even on failure: stop the cycle
 					if tr == nil {
 						continue
 					}

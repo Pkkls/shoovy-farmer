@@ -39,13 +39,13 @@ type fishConfig struct {
 	Channel                string   `json:"channel"`
 	ChatroomID             string   `json:"chatroom_id"`
 	Message                string   `json:"message"`
-	Workers                []string `json:"workers"`                  // comptes autorises a pecher (StormRock exclu)
-	HardFloorSeconds       int      `json:"hard_floor_seconds"`       // min absolu entre 2 posts d'un compte
-	JitterSeconds          int      `json:"jitter_seconds"`           // alea ajoute a chaque attente
-	StaggerMaxSeconds      int      `json:"stagger_max_seconds"`      // decalage aleatoire au demarrage
-	ErrorBackoffMinutes    int      `json:"error_backoff_minutes"`    // attente apres echec/ban
-	DisabledRecheckMinutes int      `json:"disabled_recheck_minutes"` // recheck quand fishing off
-	FallbackIntervalMin    int      `json:"fallback_interval_minutes"` // si /api/fishing injoignable
+	Workers                []string `json:"workers"`                  // accounts allowed to fish (main account excluded)
+	HardFloorSeconds       int      `json:"hard_floor_seconds"`       // absolute min between two posts of an account
+	JitterSeconds          int      `json:"jitter_seconds"`           // random added to each wait
+	StaggerMaxSeconds      int      `json:"stagger_max_seconds"`      // random startup offset
+	ErrorBackoffMinutes    int      `json:"error_backoff_minutes"`    // wait after failure/ban
+	DisabledRecheckMinutes int      `json:"disabled_recheck_minutes"` // recheck when fishing is off
+	FallbackIntervalMin    int      `json:"fallback_interval_minutes"` // if /api/fishing is unreachable
 }
 
 func configPath() string {
@@ -91,7 +91,7 @@ func loadConfig() (fishConfig, error) {
 
 func (c fishConfig) isWorker(name string) bool {
 	if len(c.Workers) == 0 {
-		return false // securite: aucun worker liste -> on ne peche pour personne (evite StormRock par defaut)
+		return false // safety: no worker listed -> fish for nobody (excludes the main account by default)
 	}
 	for _, w := range c.Workers {
 		if strings.EqualFold(w, name) {
@@ -178,7 +178,7 @@ func (a *acctRunner) logf(f string, v ...any) {
 	log.Printf("[%s] "+f, append([]any{a.name}, v...)...)
 }
 
-// jitter renvoie une duree aleatoire dans [0, maxSec[ (desynchronise les comptes).
+// jitter returns a random duration in [0, maxSec) (desyncs accounts).
 func (a *acctRunner) jitter(maxSec int) time.Duration {
 	if maxSec <= 0 {
 		return 0
@@ -266,7 +266,7 @@ func (a *acctRunner) run() {
 	a.client = c
 
 	cfg0, _ := loadConfig()
-	// Stagger de demarrage: chaque compte demarre a un moment different.
+	// Startup stagger: each account starts at a different time.
 	stag := a.jitter(cfg0.StaggerMaxSeconds)
 	a.logf("starting — stagger %s", stag.Round(time.Second))
 	time.Sleep(stag)
@@ -290,7 +290,7 @@ func (a *acctRunner) run() {
 
 		st, ok := a.fishState()
 		if !ok {
-			// /api/fishing injoignable -> attente prudente (PAS de post a l'aveugle).
+			// /api/fishing unreachable -> wait cautiously (do NOT post blindly).
 			w := time.Duration(cfg.FallbackIntervalMin)*time.Minute + a.jitter(cfg.JitterSeconds)
 			a.logf("fishing state unavailable — waiting %s (no post)", w.Round(time.Second))
 			time.Sleep(w)
@@ -308,7 +308,7 @@ func (a *acctRunner) run() {
 			continue
 		}
 
-		// Pret a pecher (remaining==0) et hard-floor respecte -> UN post.
+		// Ready to fish (remaining==0) and hard floor satisfied -> ONE post.
 		code, resp := a.postChat(cfg)
 		lastPost = time.Now()
 		a.logf("%q -> HTTP %d %.90s", cfg.Message, code, resp)

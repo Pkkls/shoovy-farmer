@@ -1,11 +1,9 @@
-// econ — funnel autonome vers le compte principal (StormRock). Sur carte Lichee 24/7.
-// Par compte worker (JAMAIS StormRock): claim !daily (200 credits gratuits/20h) quand dispo,
-// et tip le surplus de balance a StormRock (!tip @StormRock <montant>). Consolide les gains
-// (fishing, daily, trading) vers le compte principal. ROI+ garanti (daily gratuit + transfert
-// sans rake, verifie empiriquement 10 envoyes = 10 recus).
-//
-// Lecture balance/daily: shoovy.wtf /api/me + /api/stocks (plain, Railway). Post commandes chat:
-// kick.com/api/v2/messages/send (Kasada -> tls-client impersonation Chrome, comme fishd).
+// econ — autonomous funnel to the main account. For each worker account (NEVER the main one):
+// claim !daily (free credits every 20h) when ready, and tip the surplus balance to the main
+// account (!tip @Main <amount>). This consolidates earnings (fishing, daily, trading) into the
+// main account. Positive by design: the daily is free and the tip has no fee (10 sent = 10
+// received). Reads balance/daily from shoovy.wtf /api/me + /api/stocks (plain HTTP). Posts chat
+// commands via kick.com/api/v2/messages/send (Kick uses Kasada, so it uses a Chrome TLS profile).
 package main
 
 import (
@@ -27,15 +25,15 @@ const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
 
 // ── config.json ──────────────────────────────────────────────────────────────
 type config struct {
-	TargetUser      string             `json:"target_user"`      // StormRock (destinataire des tips)
-	Channel         string             `json:"channel"`          // slug kick (stormrock)
+	TargetUser      string             `json:"target_user"`      // the main account (tip recipient)
+	Channel         string             `json:"channel"`          // kick channel slug
 	ChatroomID      string             `json:"chatroom_id"`      // 29834074
-	Workers         []string           `json:"workers"`          // comptes actionnes (JAMAIS StormRock)
+	Workers         []string           `json:"workers"`          // worker accounts (NEVER the main account)
 	KeepFloat       map[string]float64 `json:"keep_float"`       // balance a laisser par worker (trading)
 	MinTip          float64            `json:"min_tip"`          // seuil min pour tipper
 	CycleMinutes    int                `json:"cycle_minutes"`    // periode de la boucle
-	PostGapSeconds  int                `json:"post_gap_seconds"` // pause entre 2 posts chat
-	TipCooldownHrs  float64            `json:"tip_cooldown_hrs"` // min heures entre 2 tips PAR worker (discretion)
+	PostGapSeconds  int                `json:"post_gap_seconds"` // pause between two chat posts
+	TipCooldownHrs  float64            `json:"tip_cooldown_hrs"` // min hours between two tips PER worker (discretion)
 }
 
 func configPath() string {
@@ -59,13 +57,13 @@ func loadConfig() (config, error) {
 		return c, err
 	}
 	if c.TargetUser == "" {
-		c.TargetUser = "StormRock"
+		c.TargetUser = "MainAccount"
 	}
 	if c.ChatroomID == "" {
 		c.ChatroomID = "29834074"
 	}
 	if c.Channel == "" {
-		c.Channel = "stormrock"
+		c.Channel = "shoovy"
 	}
 	if c.MinTip <= 0 {
 		c.MinTip = 50
@@ -193,7 +191,7 @@ func postChat(client tls_client.HttpClient, a account, bearer, chatroomID, conte
 		"User-Agent":    {userAgent},
 		"Accept":        {"application/json"},
 		"Content-Type":  {"application/json"},
-		"Referer":       {"https://kick.com/stormrock"},
+		"Referer":       {"https://kick.com/shoovy"},
 		"Origin":        {"https://kick.com"},
 		"Authorization": {"Bearer " + bearer},
 		"Cookie":        {a.cookieHeader()},
@@ -246,7 +244,7 @@ func main() {
 		gap := time.Duration(cfg.PostGapSeconds) * time.Second
 		for _, name := range cfg.Workers {
 			if strings.EqualFold(name, cfg.TargetUser) {
-				continue // securite: jamais d'action sur le compte principal
+				continue // safety: never act on the main account
 			}
 			a, ok := byName[name]
 			if !ok || a.Bearer == "" || a.ShoovySession == "" {
@@ -258,7 +256,7 @@ func main() {
 				bearer = dec
 			}
 
-			// 1) Daily gratuit si dispo
+			// 1) Free daily if available
 			if me, e := shoovyGet(client, "/api/me", a.ShoovySession); e == nil {
 				if asBool(me["logged_in"]) && asBool(me["daily_ready"]) {
 					code, resp := postChat(client, a, bearer, cfg.ChatroomID, "!daily")
@@ -269,7 +267,7 @@ func main() {
 				log.Printf("[%s] /api/me error: %v", name, e)
 			}
 
-			// 2) Consolidation: tip le surplus au-dessus du float garde
+			// 2) Consolidation: tip the surplus above the kept float
 			st, e := shoovyGet(client, "/api/stocks", a.ShoovySession)
 			if e != nil {
 				log.Printf("[%s] /api/stocks error: %v", name, e)

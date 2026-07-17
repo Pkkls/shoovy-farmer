@@ -132,7 +132,7 @@ func main() {
 				mu.Unlock()
 				if p == nil || !p.running {
 					launch(b)
-					time.Sleep(1 * time.Second) // stagger léger entre lancements
+					time.Sleep(1 * time.Second) // small stagger between launches
 				}
 			}
 		}
