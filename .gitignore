@@ -19,3 +19,4 @@ __pycache__/
 
 # The chat capture grows without bound; keep the tooling, not the tape.
 data/study/chat.jsonl
+data/study/harvest.pid
