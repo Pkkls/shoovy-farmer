@@ -1,0 +1,5 @@
+n_bot_msgs 2
+n_cmd_msgs 48
+
+1787166291 🎣 @BigDickBrad reeled in a 32.1 lb 🪙 Tarpon (rare) worth 141 credits · 69/100 species — sell it on the fishing page!
+1787166291 🎣 @WarIsARacket reeled in a 64.4 lb 🪁 Stingray (uncommon) worth 280 credits · 75/100 species · new personal best! — sell it on the fishing page!

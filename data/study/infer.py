@@ -14,6 +14,7 @@ against any flow that needs more than one call to land.
 """
 import sys
 
+import budget
 import facts
 
 MAX_PASSES = 10
@@ -92,29 +93,39 @@ def rule_chest_capture(cur):
 
 
 def rule_fishing_throughput(cur):
-    """Casts per hour actually achievable, cooldown times availability."""
+    """Casts per hour actually achievable, cooldown against retries."""
     cd = _val(cur, "fishing.cooldown_seconds")
     p = _val(cur, "infra.call_success_probability")
     if cd is None or p is None:
         return []
     nominal = 3600.0 / cd
-    return [
+    out = [
         dict(id="fishing.casts_per_hour_nominal", subject="mechanic:fishing",
              predicate="lancers_par_heure_theoriques", value=round(nominal, 2),
              unit="casts/h", status="derived", confidence=0.4,
              derived_from=["fishing.cooldown_seconds"],
              method="3600 / cooldown, plafond impose par le jeu",
              source="infer.py"),
-        dict(id="fishing.casts_per_hour_effective", subject="mechanic:fishing",
-             predicate="lancers_par_heure_reels", value=round(nominal * p, 2),
-             unit="casts/h", status="derived", confidence=0.2,
-             derived_from=["fishing.casts_per_hour_nominal",
-                           "infra.call_success_probability"],
-             method="plafond du jeu multiplie par la probabilite qu'un appel aboutisse; "
-                    "un cast rate n'est pas perdu (on peut reessayer) donc c'est une "
-                    "borne basse, mais le cooldown ne redemarre pas non plus",
-             source="infer.py"),
     ]
+    # Retrying inside the cooldown window is what actually happens, and it
+    # recovers most of what naive multiplication threw away.
+    for gap in (30.0, 10.0):
+        hit, attempts = budget.p_success_in_window(p, cd, gap)
+        out.append(dict(
+            id=f"fishing.casts_per_hour_effective_retry{int(gap)}s",
+            subject="mechanic:fishing",
+            predicate=f"lancers_par_heure_reels_avec_reessai_toutes_les_{int(gap)}s",
+            value=round(nominal * hit, 2), unit="casts/h", status="derived",
+            confidence=0.3,
+            derived_from=["fishing.casts_per_hour_nominal",
+                          "infra.call_success_probability",
+                          "fishing.cooldown_seconds"],
+            method=f"P(au moins un succes dans la fenetre) = 1-(1-p)^{attempts} "
+                   f"avec {attempts} essais espaces de {int(gap)}s dans un cooldown "
+                   f"de {cd:.0f}s, soit {hit:.3f}. Un lancer rate n'est pas perdu: "
+                   "seul du temps est depense dans une fenetre qui allait s'ecouler",
+            source="budget.py"))
+    return out
 
 
 def rule_business_effective_cadence(cur):

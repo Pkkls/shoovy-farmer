@@ -63,15 +63,15 @@ resource". That was wrong and is superseded: the scarce resource is
 
 ## State of knowledge
 
-*Generated from `facts.jsonl` by `render.py`. 58 facts, 59 records with history. Do not hand-edit this section.*
+*Generated from `facts.jsonl` by `render.py`. 61 facts, 63 records with history. Do not hand-edit this section.*
 
 | status | count |
 |---|---|
 | measured | 20 |
-| derived | 15 |
+| derived | 17 |
 | candidate | 1 |
 | assumed | 19 |
-| refuted | 3 |
+| refuted | 4 |
 
 ### measured (20)
 
@@ -100,7 +100,7 @@ Observed on the wire by this study.
 | `mechanic:fishing` | plancher_de_valeur | 0.1 fraction |  | /api/fishing |
 | `mechanic:fishing` | fenetre_fraiche | 24 h |  | /api/fishing |
 
-### derived (15)
+### derived (17)
 
 Computed from other facts. Each names what it rests on.
 
@@ -110,13 +110,15 @@ Computed from other facts. Each names what it rests on.
 | `infra:availability` | probabilite_qu_un_appel_aboutisse | 0.158 fraction |  | infer.py |
 | `infra:availability` | probabilite_qu_un_enchainement_de_2_appels_aboutisse | 0.025 fraction |  | infer.py |
 | `infra:availability` | probabilite_qu_un_enchainement_de_3_appels_aboutisse | 0.0039 fraction |  | infer.py |
+| `infra:availability` | regle_de_lecture_de_la_disponibilite | retryable: 1-(1-p)^k sur la fenetre; deadline: p^etapes |  | budget.py |
 | `infra:leaderboard` | debit_net_requis_pour_rattraper_en_30_jours | 26428.0 credits/jour |  | infer.py |
 | `infra:leaderboard` | debit_net_requis_pour_rattraper_en_90_jours | 8809.3 credits/jour |  | infer.py |
 | `mechanic:business` | tentatives_par_collecte_reussie | 6.3 appels |  | infer.py |
 | `mechanic:business` | rang_d_achat_du_manager | premier achat rentable |  | infer.py |
 | `mechanic:business` | division_du_cout_en_requetes_par_manager | 3 |  | model.py |
 | `mechanic:business` | cadence_de_collecte_optimale | T* = C / r |  | model.py |
-| `mechanic:fishing` | lancers_par_heure_reels | 3.16 casts/h |  | infer.py |
+| `mechanic:fishing` | lancers_par_heure_reels_avec_reessai_toutes_les_10s | 19.1 casts/h |  | budget.py |
+| `mechanic:fishing` | lancers_par_heure_reels_avec_reessai_toutes_les_30s | 12.87 casts/h |  | budget.py |
 | `mechanic:fishing` | lancers_par_heure_theoriques | 20.0 casts/h |  | infer.py |
 | `mechanic:fishing` | valeur_conservee_en_vendant_une_fois_par_jour | 1.0 fraction |  | model.py |
 | `mechanic:fishing` | part_des_appels_consacree_a_la_vente | 0.0021 fraction |  | infer.py |
@@ -158,7 +160,7 @@ Asserted by the site's own docs, or inherited from July. Never watched happen. T
 | `mechanic:stocks` | fenetre_moyenne_mobile | 20 points |  | configs de juillet du repo |
 | `mechanic:treasure` | fouilles_gratuites | 1 par jour |  | raw/commands.txt |
 
-### refuted (3)
+### refuted (4)
 
 Believed, then disproved. Kept because the reversals are data.
 
@@ -167,6 +169,7 @@ Believed, then disproved. Kept because the reversals are data.
 | `infra:availability` | debit_du_chat_proxy_de_sante_backend | False | 368 | chat.jsonl |
 | `infra:kick` | chat_ferme_aux_serveurs | False |  | pusher_probe.py |
 | `infra:shoovy.wtf` | ip_bannie_par_nos_sondes | False |  | FINDINGS.md |
+| `mechanic:fishing` | lancers_par_heure_reels | 3.16 casts/h |  | budget.py |
 
 ### What rests on what
 
@@ -179,7 +182,8 @@ A fact moving to `refuted` invalidates everything below it.
 | `business.manager_request_divisor` | `business.optimal_period`, `business.manager_capacity_multiplier` |
 | `business.optimal_period` | `business.till_stops_when_full` |
 | `event.chest_capture_probability` | `chat.pusher_route_works`, `chest.response_window` |
-| `fishing.casts_per_hour_effective` | `fishing.casts_per_hour_nominal`, `infra.call_success_probability` |
+| `fishing.casts_per_hour_effective_retry10s` | `fishing.casts_per_hour_nominal`, `infra.call_success_probability`, `fishing.cooldown_seconds` |
+| `fishing.casts_per_hour_effective_retry30s` | `fishing.casts_per_hour_nominal`, `infra.call_success_probability`, `fishing.cooldown_seconds` |
 | `fishing.casts_per_hour_nominal` | `fishing.cooldown_seconds` |
 | `fishing.daily_sell_lossless` | `fishing.decay_per_day`, `fishing.fresh_hours` |
 | `fishing.sell_share_of_calls` | `fishing.daily_sell_lossless`, `fishing.casts_per_hour_nominal` |
@@ -187,10 +191,11 @@ A fact moving to `refuted` invalidates everything below it.
 | `infra.call_success_probability` | `infra.availability.v1` |
 | `infra.flow_success_2_steps` | `infra.call_success_probability` |
 | `infra.flow_success_3_steps` | `infra.call_success_probability` |
+| `infra.retry_vs_deadline_split` | `infra.call_success_probability` |
 | `target.rate_needed_30d` | `leaderboard.rank1` |
 | `target.rate_needed_90d` | `leaderboard.rank1` |
 
-*Rendered 2026-08-19 21:21.*
+*Rendered 2026-08-19 21:27.*
 
 <!-- FACTS:END -->
 
@@ -624,6 +629,48 @@ Most of the channel is talking, not playing, and the talkers do not notice.
 Zero messages from any bot or system account in 368. That is now a substantially
 larger sample behind the caveat recorded earlier, though it remains confounded by
 the outage: a game that cannot answer looks identical to a game that never does.
+
+## Low availability is cheap for grinding and ruinous for events
+
+The availability section above concluded that a backend answering one call in six
+degrades everything. That is half wrong, and the half matters.
+
+It assumed a failed call is a lost opportunity. For most of this game it is not.
+A cast that 502s can be retried, and the only thing spent is time inside a window
+that was going to elapse anyway. So the right question is not "what fraction of
+calls succeed" but "does at least one succeed before the window closes":
+
+    P(window) = 1 - (1 - p)^k     with k attempts inside the window
+
+`budget.py` works this through at the measured p = 0.158:
+
+| mechanic | window | attempts | P(window) | effective | calls/h |
+|---|---|---|---|---|---|
+| fishing, retry 30 s | 180 s | 6 | 0.644 | 12.9/h | 120 |
+| fishing, retry 10 s | 180 s | 18 | 0.955 | 19.1/h | 360 |
+| collecting, 15 min window | 900 s | 30 | 0.994 | 4.0/h | 120 |
+| daily, 20 h window | 72000 s | 1200 | 1.000 | — | 60 |
+
+A one-off action is 95 % certain to have landed after 18 attempts.
+
+So the grind is barely affected. The longer the cooldown, the less availability
+costs at all: collecting is essentially unimpaired, and the daily is untouched.
+The earlier derived figure of 3.16 casts/hour is now `refuted` in the store, and
+the corrected variants sit beside it.
+
+Deadline actions get no such relief. A chest window closes, so there is no second
+attempt, and availability multiplies directly: 0.158 for one call, 0.025 for two.
+
+**The split is the finding, not either number.** Treating every mechanic the same
+way produces a plan that is wrong in both directions simultaneously: too gloomy
+about grinding, too cheerful about events. In the store this lives as
+`infra.retry_vs_deadline_split`.
+
+One consequence for the tool: retry spacing is a real design knob, not a
+politeness setting. Going from 30 s to 10 s between attempts takes fishing from
+64 % to 96 % of its ceiling, at the cost of tripling the call volume. Whether
+that trade is available depends on whether the 429 is ambient or provoked, which
+is still the open question underneath everything.
 
 ## Open questions
 
