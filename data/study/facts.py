@@ -137,7 +137,9 @@ def cmd_check():
         for parent in (r.get("derived_from") or []):
             if parent not in cur:
                 problems.append(f"{r['id']}: derive d'un id inconnu {parent!r}")
-            elif cur[parent]["status"] == "refuted":
+            elif cur[parent]["status"] == "refuted" and r["status"] != "refuted":
+                # A refuted fact resting on a refuted parent is consistent: the
+                # cascade already reached it. Only live facts are a problem.
                 problems.append(f"{r['id']}: derive de {parent} qui est REFUTE")
         if r.get("supersedes") and r["supersedes"] not in cur:
             problems.append(f"{r['id']}: supersedes un id inconnu {r['supersedes']!r}")

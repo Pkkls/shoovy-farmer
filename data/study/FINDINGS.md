@@ -63,26 +63,30 @@ resource". That was wrong and is superseded: the scarce resource is
 
 ## State of knowledge
 
-*Generated from `facts.jsonl` by `render.py`. 61 facts, 63 records with history. Do not hand-edit this section.*
+*Generated from `facts.jsonl` by `render.py`. 157 facts, 164 records with history. Do not hand-edit this section.*
 
 | status | count |
 |---|---|
-| measured | 20 |
-| derived | 17 |
-| candidate | 1 |
-| assumed | 19 |
-| refuted | 4 |
+| measured | 26 |
+| derived | 13 |
+| assumed | 109 |
+| refuted | 9 |
 
-### measured (20)
+### measured (26)
 
 Observed on the wire by this study.
 
 | subject | fact | value | n | source |
 |---|---|---|---|---|
 | `command:!fish` | part_des_commandes_observees | 0.84 fraction | 25 | chat.jsonl |
+| `event:chest` | occurrences_observees | 0 evenements | 1270 | chat.jsonl via analyze_chat.py |
 | `infra:availability` | serie_utilisable_max | 2 requetes | 19 | uptime.py |
 | `infra:availability` | taux_reponses_utilisables | 0.158 fraction | 19 | uptime.py |
+| `infra:availability` | part_des_commandes_joueurs_ayant_recu_une_reponse | 0.038 fraction | 52 | chat.jsonl via analyze_chat.py |
+| `infra:kick` | delai_de_reponse_du_bot | 111 s | 2 | chat.jsonl via analyze_chat.py |
+| `infra:kick` | le_jeu_repond_en_chat | True | 1270 | chat.jsonl via analyze_chat.py |
 | `infra:kick` | debit_du_chat | 19.2 msg/min | 368 | chat.jsonl |
+| `infra:kick` | les_gains_sont_annonces_publiquement | True | 2 | chat.jsonl via analyze_chat.py |
 | `infra:kick` | chat_lisible_depuis_un_serveur | True |  | pusher_probe.py |
 | `infra:kick` | chatroom_id | 29834074 |  | kick.com/api/v2 |
 | `infra:kick` | follow_minimum_avant_de_poster | 6 min |  | kick.com/api/v2 |
@@ -96,11 +100,12 @@ Observed on the wire by this study.
 | `infra:shoovy.wtf` | fronting | cloudflare devant railway |  | requests.jsonl |
 | `infra:shoovy.wtf` | cold_start | 40 s | 3 | requests.jsonl |
 | `infra:shoovy.wtf` | accepte_client_stdlib | True |  | requests.jsonl |
+| `mechanic:fishing` | valeur_d_une_prise | 210.5 credits | 2 | chat.jsonl via analyze_chat.py |
 | `mechanic:fishing` | decay | 0.1 fraction/jour |  | /api/fishing |
 | `mechanic:fishing` | plancher_de_valeur | 0.1 fraction |  | /api/fishing |
 | `mechanic:fishing` | fenetre_fraiche | 24 h |  | /api/fishing |
 
-### derived (17)
+### derived (13)
 
 Computed from other facts. Each names what it rests on.
 
@@ -117,50 +122,126 @@ Computed from other facts. Each names what it rests on.
 | `mechanic:business` | rang_d_achat_du_manager | premier achat rentable |  | infer.py |
 | `mechanic:business` | division_du_cout_en_requetes_par_manager | 3 |  | model.py |
 | `mechanic:business` | cadence_de_collecte_optimale | T* = C / r |  | model.py |
-| `mechanic:fishing` | lancers_par_heure_reels_avec_reessai_toutes_les_10s | 19.1 casts/h |  | budget.py |
-| `mechanic:fishing` | lancers_par_heure_reels_avec_reessai_toutes_les_30s | 12.87 casts/h |  | budget.py |
-| `mechanic:fishing` | lancers_par_heure_theoriques | 20.0 casts/h |  | infer.py |
 | `mechanic:fishing` | valeur_conservee_en_vendant_une_fois_par_jour | 1.0 fraction |  | model.py |
-| `mechanic:fishing` | part_des_appels_consacree_a_la_vente | 0.0021 fraction |  | infer.py |
 | `mechanic:fishing` | valeur_conservee_apres_une_semaine | 0.778 fraction |  | model.py |
 
-### candidate (1)
-
-A reading that fits, with the thing that would break it named.
-
-| subject | fact | value | n | source |
-|---|---|---|---|---|
-| `mechanic:fishing` | cooldown | 180 s | 2 | chat.jsonl |
-
-- `fishing.cooldown_seconds` breaks if: le site etait indisponible pendant toute la fenetre: une commande sans effet ne demarre aucun timer, donc la regularite peut etre l'habitude du joueur et non le cooldown du jeu
-
-### assumed (19)
+### assumed (109)
 
 Asserted by the site's own docs, or inherited from July. Never watched happen. Treat as suspect.
 
 | subject | fact | value | n | source |
 |---|---|---|---|---|
+| `command:!accept` | signature | !accept |  | raw/commands.txt |
+| `command:!boobs` | plage_affichee | 34 AA-G cup |  | raw/commands.txt |
+| `command:!boobs` | signature | !boobs [user] |  | raw/commands.txt |
+| `command:!boom` | aliases | !businessboom |  | raw/commands.txt |
+| `command:!boom` | qui_peut_lancer | streamer, admins |  | raw/commands.txt |
+| `command:!boom` | signature | !boom [hours] |  | raw/commands.txt |
+| `command:!business` | aliases | !biz |  | raw/commands.txt |
+| `command:!business` | signature | !business |  | raw/commands.txt |
+| `command:!buy` | signature | !buy <ticker> <credits> |  | raw/commands.txt |
+| `command:!chest` | qui_peut_lancer | streamer seulement |  | raw/commands.txt |
+| `command:!chest` | signature | !chest <amount> [trigger word] |  | raw/commands.txt |
+| `command:!cock` | plage_affichee | 0-12 inches |  | raw/commands.txt |
+| `command:!cock` | signature | !cock [user] |  | raw/commands.txt |
+| `command:!collect` | aliases | !cashout |  | raw/commands.txt |
+| `command:!collect` | signature | !collect |  | raw/commands.txt |
+| `command:!cook` | consomme_les_poissons_les_moins_chers_dabord | True |  | raw/commands.txt |
+| `command:!cook` | signature | !cook <item> |  | raw/commands.txt |
+| `command:!credits` | aliases | !coins, !points, !balance |  | raw/commands.txt |
+| `command:!credits` | signature | !credits <user> (optionnel) |  | raw/commands.txt |
+| `command:!daily` | signature | !daily |  | raw/commands.txt |
+| `command:!decline` | signature | !decline |  | raw/commands.txt |
+| `command:!disableplinko` | aliases | !plinkooff |  | raw/commands.txt |
+| `command:!disableplinko` | qui_peut_lancer | streamer, admins, mods |  | raw/commands.txt |
+| `command:!disableplinko` | signature | !disableplinko |  | raw/commands.txt |
+| `command:!duel` | signature | !duel <user> <amount> |  | raw/commands.txt |
+| `command:!dump` | qui_peut_lancer | streamer, admins |  | raw/commands.txt |
+| `command:!dump` | signature | !dump <ticker> |  | raw/commands.txt |
+| `command:!empire` | signature | !empire [user] |  | raw/commands.txt |
+| `command:!enableplinko` | aliases | !plinkoon |  | raw/commands.txt |
+| `command:!enableplinko` | qui_peut_lancer | streamer, admins, mods |  | raw/commands.txt |
+| `command:!enableplinko` | signature | !enableplinko |  | raw/commands.txt |
+| `command:!fish` | signature | !fish |  | raw/commands.txt |
+| `command:!fishsell` | suffixe_moins_balaie_les_paliers_inferieurs | True |  | raw/commands.txt |
+| `command:!fishsell` | signature | !fishsell <all\|rarity\|species> [count] [best\|worst] |  | raw/commands.txt |
+| `command:!frenzy` | aliases | !fishfrenzy, !fishingfrenzy |  | raw/commands.txt |
+| `command:!frenzy` | qui_peut_lancer | streamer, admins |  | raw/commands.txt |
+| `command:!frenzy` | signature | !frenzy [seconds\|stop] |  | raw/commands.txt |
+| `command:!gamble` | signature | !gamble <amount\|all> |  | raw/commands.txt |
+| `command:!help` | aliases | !commands |  | raw/commands.txt |
+| `command:!help` | signature | !help |  | raw/commands.txt |
+| `command:!leaderboard` | aliases | !top |  | raw/commands.txt |
+| `command:!leaderboard` | signature | !leaderboard |  | raw/commands.txt |
+| `command:!leaderboard` | taille_du_top_affiche | 5 |  | raw/commands.txt |
+| `command:!plinko` | necessite_le_plateau_active | True |  | raw/commands.txt |
+| `command:!plinko` | signature | !plinko <amount\|all> |  | raw/commands.txt |
+| `command:!portfolio` | signature | !portfolio <user> (optionnel) |  | raw/commands.txt |
+| `command:!predict` | paris_max_par_prediction | 1 |  | raw/commands.txt |
+| `command:!predict` | signature | !predict <option#> <amount> |  | raw/commands.txt |
+| `command:!prestige` | signature | !prestige |  | raw/commands.txt |
+| `command:!pump` | qui_peut_lancer | streamer, admins |  | raw/commands.txt |
+| `command:!pump` | signature | !pump <ticker> |  | raw/commands.txt |
+| `command:!raffle` | aliases | !tickets |  | raw/commands.txt |
+| `command:!raffle` | signature | !raffle [tickets] |  | raw/commands.txt |
+| `command:!rob` | signature | !rob <user> |  | raw/commands.txt |
+| `command:!sell` | signature | !sell <ticker> <shares\|all> |  | raw/commands.txt |
+| `command:!site` | signature | !site |  | raw/commands.txt |
+| `command:!stocks` | signature | !stocks |  | raw/commands.txt |
+| `command:!tip` | destinataire_doit_avoir_deja_chatte | True |  | raw/commands.txt |
+| `command:!tip` | signature | !tip <user> <amount> |  | raw/commands.txt |
+| `command:!treasure` | signature | !treasure |  | raw/commands.txt |
+| `command:!tts` | signature | !tts <message> |  | raw/commands.txt |
+| `command:!ttsoff` | qui_peut_lancer | streamer, admins |  | raw/commands.txt |
+| `command:!ttsoff` | signature | !ttsoff |  | raw/commands.txt |
+| `command:!ttson` | qui_peut_lancer | streamer, admins |  | raw/commands.txt |
+| `command:!ttson` | signature | !ttson |  | raw/commands.txt |
+| `command:!wash` | aliases | !launder |  | raw/commands.txt |
+| `command:!wash` | signature | !wash |  | raw/commands.txt |
+| `event:boom` | till_plein_ne_recoit_rien_du_boom | True |  | raw/commands.txt |
+| `event:chest` | mot_declencheur_par_defaut | W |  | raw/commands.txt |
 | `event:chest` | fenetre_de_reponse | 30 s |  | raw/commands.txt |
+| `event:frenzy` | duree_par_defaut | 30 s |  | raw/commands.txt |
+| `event:frenzy` | cooldown_de_fish_ramene_a_zero | True |  | raw/commands.txt |
+| `mechanic:business` | collecter_cache_tout_le_till_du_vol | True |  | raw/commands.txt |
+| `mechanic:business` | moment_de_la_collecte_ninflue_pas_sur_le_montant_gagne | True |  | raw/commands.txt |
 | `mechanic:business` | taux_plein_seulement_en_live | True |  | raw/commands.txt |
+| `mechanic:business` | till_illegal_impossible_a_voler | True |  | raw/commands.txt |
+| `mechanic:business` | rendement_illegal_superieur_au_legal_par_credit_investi | True |  | raw/commands.txt |
 | `mechanic:business` | multiplicateur_capacite_manager | 3 |  | raw/commands.txt |
 | `mechanic:business` | reduction_max_odds_de_raid_par_payoff | 0.75 fraction |  | raw/commands.txt |
+| `mechanic:business` | fraction_du_till_cachee_par_la_securite | 0.75 fraction |  | raw/commands.txt |
 | `mechanic:business` | till_sature | True |  | raw/commands.txt |
+| `mechanic:business` | capacite_de_lavage_inutilisee_saccumule | True |  | raw/commands.txt |
+| `mechanic:casino` | multiplicateur_de_gain | 2 |  | raw/commands.txt |
+| `mechanic:casino` | fenetre_pour_repondre | 60 s |  | raw/commands.txt |
+| `mechanic:casino` | challenger_rembourse_si_pas_de_reponse | True |  | raw/commands.txt |
 | `mechanic:chat_income` | periode_de_gain | 60 s |  | raw/commands.txt |
+| `mechanic:crime` | amende_non_couverte_force_la_vente_de_ses_propres_actions | True |  | raw/commands.txt |
+| `mechanic:crime` | gros_butin_force_la_vente_des_actions_de_la_victime | True |  | raw/commands.txt |
 | `mechanic:daily` | montant | 200 credits |  | configs de juillet du repo |
 | `mechanic:daily` | periode | 20 h |  | configs de juillet du repo |
 | `mechanic:fishing` | recette_bait | 3 communs |  | raw/commands.txt |
 | `mechanic:fishing` | recette_lure | 5 uncommons |  | raw/commands.txt |
 | `mechanic:fishing` | especes_requises_pour_prestige | 100 especes |  | raw/commands.txt |
+| `mechanic:raffles` | raffle_annulee_rembourse_tout_le_monde | True |  | raw/commands.txt |
+| `mechanic:raffles` | credits_depenses_meme_en_cas_de_perte | True |  | raw/commands.txt |
+| `mechanic:raffles` | cotes_proportionnelles_au_nombre_de_tickets | True |  | raw/commands.txt |
+| `mechanic:stocks` | achat_fait_monter_le_prix | True |  | raw/commands.txt |
+| `mechanic:stocks` | fenetre_de_variation_affichee | 1 h |  | raw/commands.txt |
 | `mechanic:stocks` | profondeur_amm | 250000 credits |  | configs de juillet du repo |
 | `mechanic:stocks` | frais | 1 % |  | configs de juillet du repo |
+| `mechanic:stocks` | vente_fait_baisser_le_prix | True |  | raw/commands.txt |
 | `mechanic:stocks` | nombre_de_tickers | 5 |  | configs de juillet du repo |
 | `mechanic:stocks` | cooldown_entre_trades | 8 s |  | configs de juillet du repo |
 | `mechanic:stocks` | seuil_entree | -0.03 fraction |  | configs de juillet du repo |
 | `mechanic:stocks` | seuil_sortie | -0.005 fraction |  | configs de juillet du repo |
 | `mechanic:stocks` | fenetre_moyenne_mobile | 20 points |  | configs de juillet du repo |
 | `mechanic:treasure` | fouilles_gratuites | 1 par jour |  | raw/commands.txt |
+| `mechanic:treasure` | fouille_jamais_pour_rien | True |  | raw/commands.txt |
+| `mechanic:tts` | liens_interdits | True |  | raw/commands.txt |
 
-### refuted (4)
+### refuted (9)
 
 Believed, then disproved. Kept because the reversals are data.
 
@@ -170,6 +251,11 @@ Believed, then disproved. Kept because the reversals are data.
 | `infra:kick` | chat_ferme_aux_serveurs | False |  | pusher_probe.py |
 | `infra:shoovy.wtf` | ip_bannie_par_nos_sondes | False |  | FINDINGS.md |
 | `mechanic:fishing` | lancers_par_heure_reels | 3.16 casts/h |  | budget.py |
+| `mechanic:fishing` | lancers_par_heure_reels_avec_reessai_toutes_les_10s | 19.1 casts/h |  | cascade de facts.py check |
+| `mechanic:fishing` | lancers_par_heure_reels_avec_reessai_toutes_les_30s | 12.87 casts/h |  | cascade de facts.py check |
+| `mechanic:fishing` | lancers_par_heure_theoriques | 20.0 casts/h |  | cascade de facts.py check |
+| `mechanic:fishing` | cooldown | 180 s | 9 | chat.jsonl via analyze_chat.py |
+| `mechanic:fishing` | part_des_appels_consacree_a_la_vente | 0.0021 fraction |  | cascade de facts.py check |
 
 ### What rests on what
 
@@ -195,7 +281,7 @@ A fact moving to `refuted` invalidates everything below it.
 | `target.rate_needed_30d` | `leaderboard.rank1` |
 | `target.rate_needed_90d` | `leaderboard.rank1` |
 
-*Rendered 2026-08-19 21:27.*
+*Rendered 2026-08-19 21:35.*
 
 <!-- FACTS:END -->
 
@@ -501,14 +587,24 @@ chat, then catch values by rarity, chest sizes, frenzy and boom frequency, and
 cooldowns implied by how fast a player repeats a command all become **observable
 without sending a request or exposing an account**.
 
-> **Unverified, and stated too confidently when first written.** In that first
-> window no message from the game itself appeared — only players talking. So the
-> outcome half of this is a hypothesis, not a finding. The likely confound is
-> that the game bot runs on the same Railway deployment that is currently
-> flapping, so its silence may say nothing about whether it normally replies.
-> Re-check once the site is healthy, and if the game turns out never to answer in
-> chat, the firehose shrinks to commands only, which is worth much less: command
-> timings still give cooldowns, but nothing gives payouts.
+> **Confirmed on a larger sample.** The first 17-minute window showed no message
+> from the game at all, and this was downgraded to a hypothesis. Over 1270
+> messages the game's bot does appear, and it announces payouts with their credit
+> value attached, naming the player: two replies to `!fish`, worth 141 and 280
+> credits. So payouts are observable without spending a request or exposing an
+> account, exactly as hoped.
+>
+> Two details came with the confirmation, and both matter more than the headline.
+> The bot answered **94 s and 128 s** after the command, which is a game barely
+> keeping up rather than a healthy one. And only **2 of 52** game commands drew
+> any reply at all. That 3.8 % is an *independent* measurement of availability,
+> taken through other players' experience rather than our own requests, and it
+> corroborates that the backend is mostly down.
+
+The first search used a 30-second correlation window and found nothing, because
+the replies were slower than that. Widening it to 600 s surfaced them. Worth
+recording: a negative that came from too narrow a search window looked exactly
+like a negative about the world.
 
 That matters for three reasons:
 
@@ -604,14 +700,24 @@ One player kept a strikingly regular cadence: casts at 20:57:30, 21:00:18 and
 21:03:17, so gaps of 168 s and 179 s. That is the signature of someone hitting a
 cooldown rather than typing when they feel like it.
 
-Marked candidate, not measured, for two reasons. It is one player and two
-intervals. And the site was down for the whole window, so a command that does
-nothing starts no cooldown — the regularity could be their retry habit rather
-than the game's timer. Other players in the same window show gaps of 17 s, 38 s
-and 2 s, which is consistent with spamming into a dead backend.
+**Refuted by more of the same player.** Nine intervals instead of two, from that
+same account, span 168 to 589 s with a coefficient of variation of 0.75 and no
+dominant cluster. The two tight intervals were a selection artefact: pick any two
+adjacent points from a noisy series and they will often look regular.
 
-Re-measure when the game is answering. The method is sound and costs nothing:
-take the players with the most casts, keep the modal gap, discard the impatient.
+Two other players showed a single repeated interval each (914 s and 930 s), which
+is tantalising and worth exactly nothing at one measurement apiece.
+
+No cooldown is measurable while the game is not answering, because a command that
+does nothing starts no timer. The method stays sound and costs nothing: take the
+players with the most casts, keep the modal gap, discard the impatient — but run
+it on a window where the bot is actually replying.
+
+The cascade this triggered is the point of having a store. Refuting the cooldown
+invalidated the casts-per-hour ceiling, which invalidated both retry-adjusted
+throughput figures and the selling-share estimate. `facts.py check` named all
+four without being asked; they are now refuted rather than quietly wrong. The
+reasoning behind them survives intact and is waiting for a measured cooldown.
 
 ### Chat volume is not an availability sensor
 
