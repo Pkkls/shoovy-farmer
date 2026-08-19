@@ -445,6 +445,50 @@ To re-check as more samples accumulate: whether availability has a pattern
 (recovery windows, correlation with stream traffic) or is simply flat and bad.
 The per-hour breakdown in `uptime.py` will show it once there are enough hours.
 
+## What 17 minutes of listening actually produced
+
+368 messages, 20:52-21:08 on 2026-08-19, while our own requests to the game were
+failing throughout. Three results, one of them a negative.
+
+### Fishing is what people actually do
+
+Of 25 commands seen, **21 were `!fish`**. The rest: two `!rob`, one `!treasure`,
+one `!collect`, one `!site`. Whatever the spreadsheet eventually says about
+business being the efficient earner, fishing is the mechanic the channel plays,
+and that is worth knowing when judging how visible an account's behaviour is.
+
+### A candidate fishing cooldown, around three minutes
+
+One player kept a strikingly regular cadence: casts at 20:57:30, 21:00:18 and
+21:03:17, so gaps of 168 s and 179 s. That is the signature of someone hitting a
+cooldown rather than typing when they feel like it.
+
+Marked candidate, not measured, for two reasons. It is one player and two
+intervals. And the site was down for the whole window, so a command that does
+nothing starts no cooldown — the regularity could be their retry habit rather
+than the game's timer. Other players in the same window show gaps of 17 s, 38 s
+and 2 s, which is consistent with spamming into a dead backend.
+
+Re-measure when the game is answering. The method is sound and costs nothing:
+take the players with the most casts, keep the modal gap, discard the impatient.
+
+### Chat volume is not an availability sensor
+
+Tested because it would have been free: if players spam commands when the game
+is dead and settle when it works, chat rate would proxy for backend health
+without spending a request.
+
+It does not. Message rate stayed between 12 and 50 per minute across the whole
+window while every one of our requests returned 429, 502 or a timeout. No
+correlation, and no visible reaction to a backend that was down the entire time.
+Most of the channel is talking, not playing, and the talkers do not notice.
+
+### Still no sign of the game itself
+
+Zero messages from any bot or system account in 368. That is now a substantially
+larger sample behind the caveat recorded earlier, though it remains confounded by
+the outage: a game that cannot answer looks identical to a game that never does.
+
 ## Open questions
 
 1. Is the 429 a limiter aimed at callers, or platform degradation? Discriminating

@@ -38,8 +38,18 @@ def main():
         return 1
     rows = [json.loads(l) for l in open(LOG, encoding="utf-8")]
     rows = [r for r in rows if "shoovy.wtf" in r.get("url", "")]
+
+    # Samples before the pid lock landed are polluted: two drivers were running,
+    # so part of that load was ours. --since restricts to a clean window.
+    if "--since" in sys.argv:
+        cutoff = int(sys.argv[sys.argv.index("--since") + 1])
+        before = len(rows)
+        rows = [r for r in rows if r["ts"] >= cutoff]
+        print(f"fenetre propre: {len(rows)}/{before} echantillons retenus "
+              f"(depuis {time.strftime('%H:%M:%S', time.localtime(cutoff))})\n")
+
     if not rows:
-        print("aucune requete shoovy dans le log")
+        print("aucune requete shoovy dans la fenetre")
         return 1
 
     counts = collections.Counter(classify(r) for r in rows)
