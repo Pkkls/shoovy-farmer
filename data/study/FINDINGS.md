@@ -387,6 +387,54 @@ It gives distributions, not mechanics. Drop rates can be estimated from it; the
 decay curve, capacity numbers and cooldown constants still need either the client
 tables or an authenticated call.
 
+## Availability is the binding constraint, not the rate limit
+
+`uptime.py` derives this from `requests.jsonl`, which the harvest driver is
+already filling, so it costs no extra requests.
+
+First reading, 19 requests over 38 minutes (20:24-21:02, 2026-08-19):
+
+| outcome | share |
+|---|---|
+| 429 | 57.9 % |
+| 200 | **15.8 %** |
+| 5xx | 15.8 % |
+| transport error / timeout | 10.5 % |
+
+**Longest run of consecutive usable answers: 2.**
+
+Nineteen samples is a small n and the interval around 15.8 % is wide, so treat
+the figure as an order of magnitude rather than a number. The qualitative shape
+is not in doubt though, because it is corroborated independently: three harvest
+passes over 30 targets have captured 2 of them.
+
+This reframes the study's central constraint. Earlier notes called request budget
+the scarce resource, on the theory that a limiter was punishing us. That was the
+wrong model twice over. The scarce resource is **availability**, and no amount of
+polite pacing buys more of it.
+
+Design consequences, and these are load-bearing for the 24/7 tool:
+
+- **Nothing may assume a sequence of calls completes.** With a run length of 2,
+  any flow of the shape "read state, then act on it" will routinely break between
+  its two halves. Actions have to be individually retryable, and where the game
+  allows it, idempotent.
+- **Opportunistic, not scheduled.** A timer that fires an action every N minutes
+  will mostly fire into a 502. The loop should be "try, expect to fail, keep the
+  intent queued", not "sleep, act, assume".
+- **Persistent intent.** If the tool wants to collect a till or claim a daily, it
+  must hold that intent across restarts and outages until it observes a success,
+  rather than dropping it when one call fails.
+- **The cadence maths still holds but its input changes.** The business optimum
+  `T* = C/r` assumed a collection lands when you want it. At 16 % availability the
+  effective cadence is much coarser than the nominal one, which pushes the
+  manager upgrade (capacity ×3, so three times the tolerance for a missed window)
+  from a nice-to-have to the first thing worth buying.
+
+To re-check as more samples accumulate: whether availability has a pattern
+(recovery windows, correlation with stream traffic) or is simply flat and bad.
+The per-hour breakdown in `uptime.py` will show it once there are enough hours.
+
 ## Open questions
 
 1. Is the 429 a limiter aimed at callers, or platform degradation? Discriminating
