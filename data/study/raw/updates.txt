@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credits · Updates</title>
+<link rel="stylesheet" href="/static/theme.css?v=3">
+<style>
+  main { max-width: 760px; }
+  section.card { margin-bottom: 20px; }
+
+  /* suggestion box */
+  #sg-input { width: 100%; resize: vertical; min-height: 70px; padding: 10px 12px; }
+  #sg-count {
+    color: var(--muted); font-size: 12px; text-align: right; margin-top: 6px;
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+  }
+  #sg-send { margin-top: 4px; }
+  #sg-card .hint { margin-top: 10px; }
+
+  /* my suggestions */
+  #sg-mine { list-style: none; padding: 0; margin-top: 14px; }
+  #sg-mine li { padding: 8px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  #sg-mine .txt { overflow-wrap: anywhere; }
+  #sg-mine .meta { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  #sg-mine .tag { margin-left: 8px; }
+
+  /* status tag colors (shared with nothing — page-local) */
+  .tag.st-new      { background: rgba(143, 153, 168, 0.15); color: var(--dim); }
+  .tag.st-planned  { background: rgba(200, 118, 25, 0.18);  color: #eab308; }
+  .tag.st-done     { background: rgba(47, 158, 95, 0.18);   color: var(--green-text); }
+  .tag.st-declined { background: rgba(180, 35, 24, 0.18);   color: var(--red-text); }
+
+  /* changelog */
+  #cl-list { list-style: none; padding: 0; }
+  #cl-list li { padding: 14px 0; border-top: 1px solid var(--line); }
+  #cl-list li:first-child { border-top: 0; padding-top: 4px; }
+  #cl-list .when {
+    color: var(--muted); font-size: 11px; font-family: var(--mono);
+    font-variant-numeric: tabular-nums; letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  #cl-list h3 { color: var(--ink); font-size: 14px; margin-top: 2px; }
+  #cl-list .body {
+    color: var(--text); font-size: 13px; margin-top: 6px;
+    white-space: pre-line; overflow-wrap: anywhere;
+  }
+
+  .empty { color: var(--muted); text-align: center; padding: 24px 0; }
+</style>
+</head>
+<body>
+  <header>
+    <h1><span>■</span> Updates</h1>
+    <nav class="right" id="site-nav"></nav>
+  </header>
+  <script src="/static/nav.js?v=3"></script>
+
+  <main>
+    <section class="card" id="sg-card">
+      <h2>Suggest a feature</h2>
+      <div id="sg-box" style="display:none;">
+        <textarea id="sg-input" placeholder="What should we add or change? Website, bot, chat commands — anything."></textarea>
+        <div id="sg-count"></div>
+        <button class="btn primary" id="sg-send">Send suggestion</button>
+        <div class="hint" id="sg-hint"></div>
+      </div>
+      <div class="hint" id="sg-info">Loading…</div>
+      <ul id="sg-mine"></ul>
+    </section>
+
+    <section class="card">
+      <h2>Changelog — what's new</h2>
+      <ul id="cl-list"></ul>
+      <p class="empty" id="cl-empty" style="display:none;">Nothing here yet — updates will show up as they ship.</p>
+    </section>
+  </main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const STATUS_LABELS = { new: "new", planned: "planned", done: "done", declined: "declined" };
+
+function fmtDate(ts) {
+  return new Date(ts * 1000).toLocaleDateString(undefined,
+    { year: "numeric", month: "short", day: "numeric" });
+}
+
+/* Everything is rendered with textContent (never innerHTML) so suggestion
+   text and changelog entries can't inject markup. */
+function renderChangelog(entries) {
+  const list = $("cl-list");
+  list.innerHTML = "";
+  $("cl-empty").style.display = entries.length ? "none" : "block";
+  for (const e of entries) {
+    const li = document.createElement("li");
+    const when = document.createElement("div");
+    when.className = "when";
+    when.textContent = fmtDate(e.created_at);
+    const title = document.createElement("h3");
+    title.textContent = e.title;
+    li.append(when, title);
+    if (e.body) {
+      const body = document.createElement("div");
+      body.className = "body";
+      body.textContent = e.body;
+      li.appendChild(body);
+    }
+    list.appendChild(li);
+  }
+}
+
+function renderMine(mine) {
+  const list = $("sg-mine");
+  list.innerHTML = "";
+  for (const s of mine || []) {
+    const li = document.createElement("li");
+    const txt = document.createElement("div");
+    txt.className = "txt";
+    txt.textContent = s.text;
+    const tag = document.createElement("span");
+    tag.className = "tag st-" + s.status;
+    tag.textContent = STATUS_LABELS[s.status] || s.status;
+    txt.appendChild(tag);
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = "sent " + fmtDate(s.created_at);
+    li.append(txt, meta);
+    list.appendChild(li);
+  }
+}
+
+function paintInfo(d) {
+  const info = $("sg-info");
+  if (!d.enabled) {
+    info.textContent = "Feature requests are closed right now — check back later.";
+    $("sg-box").style.display = "none";
+    return;
+  }
+  if (!d.logged_in) {
+    info.innerHTML = '<a href="/auth/login" style="color:var(--blue-text);">Log in with Kick</a> to suggest a feature — up to ' + d.per_day + " per day.";
+    return;
+  }
+  $("sg-box").style.display = "block";
+  const left = d.remaining_today;
+  info.textContent = left > 0
+    ? `You can send ${left} more suggestion${left > 1 ? "s" : ""} today.`
+    : "You've used today's suggestions — come back tomorrow.";
+  $("sg-send").disabled = left <= 0;
+  $("sg-input").disabled = left <= 0;
+}
+
+async function load() {
+  const d = await (await fetch("/api/updates")).json();
+  renderChangelog(d.changelog);
+  paintInfo(d);
+  renderMine(d.mine);
+
+  const input = $("sg-input");
+  input.maxLength = d.max_chars;
+  const count = $("sg-count");
+  const updateCount = () => { count.textContent = input.value.length + " / " + d.max_chars; };
+  input.addEventListener("input", updateCount);
+  updateCount();
+
+  $("sg-send").onclick = async () => {
+    const hint = $("sg-hint");
+    const btn = $("sg-send");
+    btn.disabled = true;
+    try {
+      const r = await fetch("/api/suggestions", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: input.value })
+      });
+      const data = await r.json();
+      hint.className = "hint " + (r.ok ? "ok" : "err");
+      if (r.ok) {
+        hint.textContent = data.message;
+        input.value = "";
+        updateCount();
+        renderMine(data.mine);
+        paintInfo({ ...d, logged_in: true, remaining_today: data.remaining_today });
+      } else {
+        hint.textContent = data.error;
+        btn.disabled = false;
+      }
+    } catch (e) {
+      hint.className = "hint err";
+      hint.textContent = "Something went wrong — try again.";
+      btn.disabled = false;
+    }
+  };
+}
+load();
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2db3d1fe99e9a80',t:'MTc4NzE2NDMyMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

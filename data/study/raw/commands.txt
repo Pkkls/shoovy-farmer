@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credits · Commands</title>
+<link rel="stylesheet" href="/static/theme.css?v=3">
+<style>
+  main { max-width: 720px; }
+  .intro { color: var(--muted); font-size: 13px; margin-bottom: 16px; text-align: center; }
+  section.card { margin-bottom: 16px; }  /* the All view stacks every section */
+
+  .cmd { display: flex; gap: 16px; padding: 10px 0; border-top: 1px solid var(--line); align-items: baseline; }
+  .cmd:first-of-type { border-top: 0; }
+  .cmd code {
+    flex: 0 0 240px; color: var(--blue-text); font-weight: 600; font-size: 13px;
+    font-family: var(--mono); overflow-wrap: anywhere;
+  }
+  .cmd code .arg { color: var(--dim); font-weight: 400; }
+  .cmd code .opt { color: var(--muted); font-weight: 400; font-size: 11px; }
+  .cmd p { color: var(--text); font-size: 14px; }
+  .cmd p small { display: block; color: var(--muted); font-size: 12px; }
+  @media (max-width: 620px) {
+    .cmd { flex-direction: column; gap: 2px; }
+    .cmd code { flex: none; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1><span>■</span> Commands</h1>
+    <nav class="right" id="site-nav"></nav>
+  </header>
+  <script src="/static/nav.js?v=3"></script>
+
+  <main>
+    <p class="intro">Type these in the Kick chat. You earn credits passively just by chatting — once a minute per person.</p>
+
+    <nav class="tabs">
+      <button data-tab="all">All</button>
+      <button data-tab="credits">Credits</button>
+      <button data-tab="casino">Casino</button>
+      <button data-tab="stocks">Stocks</button>
+      <button data-tab="predictions">Predictions</button>
+      <button data-tab="raffles">Raffles</button>
+      <button data-tab="fishing">Fishing</button>
+      <button data-tab="business">Business</button>
+      <button data-tab="tts">TTS</button>
+      <button data-tab="fun">Fun</button>
+      <button data-tab="admin" hidden>Admin</button>
+    </nav>
+
+    <section class="card" data-tab-panel="credits">
+      <h2>Credits</h2>
+      <div class="cmd"><code>!credits <span class="arg">&lt;user&gt;</span> <span class="opt">(optional)</span></code>
+        <p>Shows your credit balance — or someone else's if you name them.<small>also: !coins, !points, !balance</small></p></div>
+      <div class="cmd"><code>!leaderboard</code>
+        <p>Shows the top 5 credit holders.<small>also: !top — full list on the stats page</small></p></div>
+      <div class="cmd"><code>!daily</code>
+        <p>Claims your free daily credits. Comes back around every 20 hours.</p></div>
+      <div class="cmd"><code>!tip <span class="arg">&lt;user&gt; &lt;amount&gt;</span></code>
+        <p>Sends some of your credits to another viewer.<small>example: !tip @friend 500 — they need to have chatted before</small></p></div>
+      <div class="cmd"><code>!site</code>
+        <p>Posts the website link in chat.</p></div>
+      <div class="cmd"><code>!help</code>
+        <p>Posts a short list of commands in chat.<small>also: !commands</small></p></div>
+    </section>
+
+    <section class="card" data-tab-panel="casino">
+      <h2>Casino</h2>
+      <div class="cmd"><code>!gamble <span class="arg">&lt;amount|all&gt;</span></code>
+        <p>Coinflip your credits — win and they double, lose and they're gone.<small>example: !gamble 1000 · slots, plinko, mines, dragon tower, cases, keno, blackjack &amp; crash live on the casino page</small></p></div>
+      <div class="cmd"><code>!plinko <span class="arg">&lt;amount|all&gt;</span></code>
+        <p>Drops a ball on the plinko board on stream — watch it bounce down and land on your multiplier live on the overlay.<small>example: !plinko 1000 · only while the streamer has the on-screen board switched on, usually during downtime</small></p></div>
+      <div class="cmd"><code>!enableplinko <span class="sep">/</span> !disableplinko</code>
+        <p>Puts the on-screen plinko board up on stream, or takes it down — the board appears in OBS straight away and chat is told either way.<small>streamer, admins &amp; mods · also: !plinkoon / !plinkooff · the same switch as Admin › Casino</small></p></div>
+      <div class="cmd"><code>!rob <span class="arg">&lt;user&gt;</span></code>
+        <p>Tries to pickpocket another viewer — succeed and you take a random cut of their wealth, get caught and you pay them a fine. Stocks count on both sides: a big haul force-sells the victim's shares, and a fine you can't cover in cash dumps yours. The <a href="/crime" style="color:var(--blue-text);">crime page</a> sells gear that tips the odds (or protects you).<small>example: !rob @friend · on a cooldown</small></p></div>
+      <div class="cmd"><code>!duel <span class="arg">&lt;user&gt; &lt;amount&gt;</span></code>
+        <p>Challenges another viewer to a coinflip duel for the pot.<small>example: !duel @friend 500 — they have 60 seconds to answer</small></p></div>
+      <div class="cmd"><code>!accept <span class="sep">/</span> !decline</code>
+        <p>Answers a duel challenge aimed at you.<small>no answer within 60s = challenge expires, challenger refunded</small></p></div>
+    </section>
+
+    <section class="card" data-tab-panel="stocks">
+      <h2>Stock market</h2>
+      <div class="cmd"><code>!stocks</code>
+        <p>Lists all tickers with current prices and 1-hour change.</p></div>
+      <div class="cmd"><code>!buy <span class="arg">&lt;ticker&gt; &lt;credits&gt;</span></code>
+        <p>Spends credits on shares — buying pushes the price up as your order fills.<small>example: !buy STRMR 1000</small></p></div>
+      <div class="cmd"><code>!sell <span class="arg">&lt;ticker&gt; &lt;shares|all&gt;</span></code>
+        <p>Sells shares back to credits (a small fee applies) — selling pushes the price down.<small>example: !sell STRMR all</small></p></div>
+      <div class="cmd"><code>!portfolio <span class="arg">&lt;user&gt;</span> <span class="opt">(optional)</span></code>
+        <p>Shows what you own and your profit/loss — or someone else's portfolio if you name them.</p></div>
+    </section>
+
+    <section class="card" data-tab-panel="predictions">
+      <h2>Predictions</h2>
+      <div class="cmd"><code>!predict <span class="arg">&lt;option#&gt; &lt;amount&gt;</span></code>
+        <p>Bets on the open prediction — option is its number (1, 2, 3…).<small>example: !predict 1 5000 · one bet per prediction · watch the odds on the Market page or the stream overlay</small></p></div>
+    </section>
+
+    <section class="card" data-tab-panel="raffles">
+      <h2>Raffles</h2>
+      <div class="cmd"><code>!raffle <span class="arg">[tickets]</span></code>
+        <p>Buys tickets in the running raffle for a real prize. Every ticket is one more entry in the hat, so the more you buy the better your odds — and the credits are spent either way, win or lose. Leave the number off to see the prize and how your odds are looking.<small>example: !raffle 10 · also: !tickets · full prize details, the odds board and the winner on the <a href="/raffles" style="color:var(--blue-text);">raffles page</a> · the streamer draws live, and a cancelled raffle refunds everyone</small></p></div>
+    </section>
+
+    <section class="card" data-tab-panel="fishing">
+      <h2>Fishing</h2>
+      <div class="cmd"><code>!fish</code>
+        <p>Casts a line — random catch from common carp to mythic golden koi.<small>free, on a cooldown · sell your catches &amp; browse your collection on the fishing page</small></p></div>
+      <div class="cmd"><code>!fishsell <span class="arg">&lt;all|rarity|species&gt;</span> <span class="arg">[count]</span> <span class="arg">[best|worst]</span></code>
+        <p>Sells the catches sitting in your net without leaving chat — the same sale as the fishing page.<small>examples: !fishsell all · !fishsell common · !fishsell golden koi · a rarity sells that tier only, add a '-' (!fishsell rare-) to sweep everything below it too · add a count to sell part of a stack instead of all of it — !fishsell bass 1 cashes in your most valuable bass, !fishsell bass 2 worst dumps the two cheapest · unsold fish decay, so a full net is a bleeding net</small></p></div>
+      <div class="cmd"><code>!treasure</code>
+        <p>One free dig per day at a chest that pays out across the whole site — fishing gear (usually bait or a lure, with the rods, net and freezer very rare), criminal kit like a lockpick or a decoy wallet, a purse of credits, or a contract for one of your businesses.<small>the live odds are on the fishing page · anything you can't use — a rod you already own, a manager with no shop to run — pays out worm bait or credits instead, so a dig is never wasted</small></p></div>
+      <div class="cmd"><code>!cook <span class="arg">&lt;item&gt;</span></code>
+        <p>Cooks spare catches into gear — 3 commons make worm bait, 5 uncommons make a lucky lure.<small>example: !cook bait · type !cook for the recipe list · eats your cheapest fish of that tier first, so trophies stay safe</small></p></div>
+      <div class="cmd"><code>!prestige</code>
+        <p>Hands in a complete collection log for the 🎣 Master Angler badge and a fresh, empty log.<small>needs all 100 species caught on your current run · your net is cashed in on the way out · gear, credits, channel records and lifetime totals all stay · prestige again as often as you can fill the log, and the badge counts them</small></p></div>
+    </section>
+
+    <section class="card" data-tab-panel="business">
+      <h2>Business</h2>
+      <div class="cmd"><code>!business</code>
+        <p>Shows what you run, what's sitting in the tills and what it all earns an hour.<small>also: !biz · buy, upgrade and secure your businesses on the <a href="/business" style="color:var(--blue-text);">business page</a></small></p></div>
+      <div class="cmd"><code>!collect</code>
+        <p>Empties every till you own into your balance. A business keeps earning until its till is full and then stops, so collecting regularly is the whole game — and a boom or a business event can swing what you walk away with.<small>also: !cashout · a manager triples how much a till can hold if you can't check in often</small></p></div>
+      <div class="cmd"><code>Trading hours</code>
+        <p>Your shops earn their <b>full rate while the stream is live</b> and a fraction of it once the stream ends — the money is in turning up. It makes no difference when you collect: a till that filled across a stream starting keeps both rates exactly as they happened.<small>type !business to see whether your shops are open or shut right now</small></p></div>
+      <div class="cmd"><code>Off the books</code>
+        <p>Some of the catalog is illegal, and it pays <b>dirty money</b> into a separate stash that buys nothing until it's washed. It earns more per credit invested than anything legal — but every collection is a roll against the police, and a raid seizes the till, fines you and shuts the place for hours. <b>Payoffs</b> cut those odds by up to three quarters.<small>!rob can't touch an illegal till — legal shops risk robbery, illegal ones risk raids</small></p></div>
+      <div class="cmd"><code>!wash</code>
+        <p>Washes dirty money through the <b>legal</b> businesses you run, minus a fee. Each legal shop launders a share of its own hourly income, and unused capacity banks up — so how much dirty money you can actually spend depends on how many honest fronts you keep alongside the labs.<small>also: !launder · run nothing but illegal shops and you'll pile up money you can't touch</small></p></div>
+      <div class="cmd"><code>!empire <span class="arg">[user]</span></code>
+        <p>Looks up what someone runs and what it earns.<small>example: !empire @someone · leave the name off for your own</small></p></div>
+      <div class="cmd"><code>!rob <span class="arg">&lt;user&gt;</span></code>
+        <p>Uncollected takings are cash in a register, and no safe or vault covers them — an untended till is the easiest money in the channel to steal. Security on a business hides up to three quarters of its till; collecting hides all of it.<small>see the Credits tab for the rest of how !rob works · illegal tills hold dirty money, so a robber can't reach them at all</small></p></div>
+    </section>
+
+    <section class="card" data-tab-panel="tts">
+      <h2>TTS</h2>
+      <div class="cmd"><code>!tts <span class="arg">&lt;message&gt;</span></code>
+        <p>Pays credits to have your message read out loud on stream.<small>cost and rules on the home page — no links</small></p></div>
+    </section>
+
+    <section class="card" data-tab-panel="fun">
+      <h2>Fun</h2>
+      <div class="cmd"><code>!cock <span class="arg">[user]</span></code>
+        <p>Measures your cock — or someone else's if you name them.<small>example: !cock or !cock @someone · purely for the lols, 0–12 inches</small></p></div>
+      <div class="cmd"><code>!boobs <span class="arg">[user]</span></code>
+        <p>Measures your boobs — or someone else's if you name them.<small>example: !boobs or !boobs @someone · purely for the lols, random 34 AA–G cup</small></p></div>
+    </section>
+
+    <!-- only rendered for the streamer / admins — revealed by the /api/me check below -->
+    <section class="card" data-tab-panel="admin" hidden>
+      <h2>Streamer &amp; admins</h2>
+      <div class="cmd"><code>!ttson <span class="sep">/</span> !ttsoff</code>
+        <p>Turns TTS on or off for everyone.<small>streamer &amp; admins</small></p></div>
+      <div class="cmd"><code>!pump <span class="arg">&lt;ticker&gt;</span></code>
+        <p>Shoves a stock's price up and announces it in chat.<small>streamer &amp; admins · example: !pump STRMR</small></p></div>
+      <div class="cmd"><code>!dump <span class="arg">&lt;ticker&gt;</span></code>
+        <p>Shoves a stock's price down and announces it in chat.<small>streamer &amp; admins</small></p></div>
+      <div class="cmd"><code>!chest <span class="arg">&lt;amount&gt; [trigger word]</span></code>
+        <p>Drops a credit chest — everyone who types the trigger word within 30 seconds splits it. The word defaults to W; anything after the amount becomes the trigger (e.g. <code>!chest 1000 good stream</code>).<small>streamer only, since the credits are minted · also available from the admin panel</small></p></div>
+      <div class="cmd"><code>!frenzy <span class="arg">[seconds|stop]</span></code>
+        <p>Starts a fishing frenzy — the <code>!fish</code> cooldown drops to zero for everyone until it ends, announced in chat and bannered on the overlay. Defaults to the length set in Admin › Fishing (30s); <code>!frenzy stop</code> ends one early.<small>streamer &amp; admins · also: !fishfrenzy / !fishingfrenzy · also available from the admin panel</small></p></div>
+      <div class="cmd"><code>!boom <span class="arg">[hours]</span></code>
+        <p>Drops that many hours of takings into every business till in the channel at once, announced in chat. A full till can't take any more, so a boom rewards whoever has been collecting.<small>streamer &amp; admins, since the credits are minted · also: !businessboom · also available from the admin panel</small></p></div>
+    </section>
+  </main>
+
+<script>
+/* same hash-based tabs as the casino and market pages */
+(() => {
+  const buttons = document.querySelectorAll(".tabs button");
+  // a tab that is still [hidden] (admin-only, before /api/me confirms) can't
+  // be selected — not even via an #admin deep link
+  const names = () => [...buttons].filter(b => !b.hidden).map(b => b.dataset.tab);
+  function show(name) {
+    if (!names().includes(name)) name = "all";
+    buttons.forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+    document.querySelectorAll("[data-tab-panel]").forEach(s => {
+      s.style.display = (name === "all" || s.dataset.tabPanel === name) ? "" : "none";
+    });
+    history.replaceState(null, "", "#" + name);
+  }
+  buttons.forEach(b => b.onclick = () => show(b.dataset.tab));
+
+  // Admin-only commands: shown only when the streamer or an admin is logged
+  // in. Reveal from the sessionStorage copy nav.js keeps — before the first
+  // render, so an admin's #admin deep link works — then confirm via /api/me.
+  function reveal(me) {
+    if (!me || !me.is_admin) return;
+    document.querySelectorAll('[data-tab="admin"], [data-tab-panel="admin"]')
+      .forEach(el => { el.hidden = false; });
+    const active = document.querySelector(".tabs button.active");
+    if (active) show(active.dataset.tab); // refresh the current view
+  }
+  try {
+    const cached = sessionStorage.getItem("me");
+    if (cached) reveal(JSON.parse(cached));
+  } catch (e) {}
+  fetch("/api/me").then(r => r.json()).then(reveal).catch(() => {});
+
+  show(location.hash.slice(1));
+  // hash edited while already on the page (e.g. a #tab link) still switches
+  window.addEventListener("hashchange", () => {
+    const name = location.hash.slice(1);
+    if (names().includes(name)) show(name);
+  });
+})();
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2db3f259818d785',t:'MTc4NzE2NDQwNg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

@@ -149,6 +149,82 @@ rate, and deriving it needs samples across days.
 | 4 | 169 956 |
 | 5 | 145 826 |
 
+## Game mechanics, from the site's own command reference
+
+Captured from `/commands` (`raw/commands.txt`). This is the site describing
+itself, so it is reliable on rules and silent on numbers. Every rate below still
+needs measuring.
+
+### Chatting itself pays
+
+"You earn credits passively just by chatting — once a minute per person." A
+per-minute trickle for one chat message is the floor of any plan, and it costs no
+API calls at all. Rate unknown.
+
+### Commands live in Kick chat, pages live on the API
+
+The reference is explicit: "Type these in the Kick chat". So the Kick dependency
+has **not** disappeared. But the page-based mechanics (fishing gear and selling,
+business, casino games) have their own web endpoints. The realistic picture is
+two surfaces, not one, and the earlier hope of dropping Kick entirely looks
+wrong. Several actions appear to exist on both: `!fishsell` is documented as
+"the same sale as the fishing page".
+
+### Business is a collection-cadence game
+
+- A till fills and then **stops earning**. Collecting regularly is the mechanic.
+- Shops earn their **full rate only while the stream is live**, a fraction once it
+  ends. Income is tied to the streamer's schedule, not to wall-clock time.
+- A manager **triples** till capacity, which is what buys tolerance for collecting
+  less often.
+- Part of the catalogue is illegal: it pays **dirty money** into a separate stash
+  that buys nothing until laundered, "earns more per credit invested than anything
+  legal", but every collection rolls against a raid that seizes the till, fines
+  you and shuts the shop for hours. Payoffs cut raid odds by up to three quarters.
+- Laundering capacity comes from the **legal** shops you own, so an all-illegal
+  empire piles up money it cannot spend. The legal/illegal ratio is an
+  optimisation variable.
+- Uncollected tills can be robbed by other players. Security hides up to three
+  quarters; collecting hides all of it. Illegal tills cannot be robbed.
+
+### Fishing is a flow, not a stock
+
+- `!fish` is free on a cooldown. Unsold catches decay: "a full net is a bleeding
+  net", which matches the 10 %/day decay in the public API.
+- `!fishsell` is granular: by rarity, by species, by count, best or worst first,
+  and `rare-` sweeps everything below a tier. Enough control to sell the decaying
+  tail while keeping trophies.
+- `!cook` converts spares into gear: 3 commons make worm bait, 5 uncommons make a
+  lucky lure. It consumes the cheapest fish of the tier first.
+- `!prestige` requires all 100 species on the current run and **cashes in the net**
+  on the way out. Gear, credits and lifetime totals survive.
+- `!treasure` is one free dig per day paying out across the whole site: fishing
+  gear, criminal kit, a purse of credits, or a business contract. One call a day,
+  never wasted. Likely the best credits-per-request in the game; unmeasured.
+
+### Streamer-triggered events are the big, irregular money
+
+Three events are minted by the streamer and cannot be predicted from polling:
+
+| event | what it does | why it matters |
+|---|---|---|
+| `!chest <amount> [word]` | everyone who types the trigger word within **30 s** splits it | needs a reaction inside 30 s |
+| `!frenzy [seconds]` | `!fish` cooldown drops to **zero for everyone** | a burst window worth far more than steady casting |
+| `!boom [hours]` | drops N hours of takings into **every** till at once | "a full till can't take any more, so a boom rewards whoever has been collecting" |
+
+This has an architectural consequence that polling cannot satisfy: a 24/7 tool
+needs to **listen to chat**, not just call the API on a timer. It also gives a
+standing rule for business play — keep tills empty, because a boom pays only into
+room that exists.
+
+### Player-versus-player
+
+`!rob` takes from other real viewers and can force-sell the victim's shares; a
+fine you cannot cover dumps your own. It is a sanctioned mechanic with gear on the
+crime page for both attack and defence. It is also the one lever in this study
+that takes credits from other people rather than generating them, so whether to
+use it is a decision for the repository owner, not a modelling detail.
+
 ## Open questions
 
 1. Is the 429 a limiter aimed at callers, or platform degradation? Discriminating

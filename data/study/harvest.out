@@ -1,4 +1,7 @@
 30/30 a recuperer, gap=30.0s (~15 min)
-  /                          HTTP 429       12o
+  /                          HTTP 502     6378o
+  /updates                   HTTP 200     7671o
+  /commands                  HTTP 200    18055o
+  /fishing                   HTTP 429       12o
 
-429 apres 0 succes. Arret, relance plus tard.
+429 apres 2 succes. Arret, relance plus tard.
