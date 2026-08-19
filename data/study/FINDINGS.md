@@ -277,6 +277,42 @@ Caveat: this assumes catches accumulate uniformly and that decay applies per
 catch from its own capture time. Both are readings of the public `decay` block,
 not measurements, and a stack that decays as a unit would change the numbers.
 
+## Receiving chat server-side is solved, and mostly already built
+
+The three streamer-triggered events (`!chest`, `!frenzy`, `!boom`) cannot be
+caught by polling, so this decides whether they are reachable at all. It is, by
+two independent routes, and neither needs new infrastructure.
+
+**Blocked route, for the record.** Kick's own realtime gateway
+(`websockets.kick.com`, viewer token then websocket upgrade) is browser-only.
+Cloudflare rejects both the token endpoint and the handshake, and a Chrome TLS
+fingerprint does not change that. Anything built directly on it from a server
+will fail; do not spend time there.
+
+**Route A, legacy Pusher.** Kick moved chat transport onto its own gateway, but
+the classic public Pusher transport is still live for the chatroom channel. A
+server can hold that socket with a stock websocket client. Lowest latency of the
+two, which matters: a chest splits among whoever answers within 30 seconds, so
+the budget between "message arrives" and "reply posted" is small and every hop
+spends it. Needs verification that it is still live before anything is built on
+it, since this is inherited knowledge and Kick has moved this once already.
+
+**Route B, official webhooks via kickbus.** `Pkkls/kickbus` already exists and
+does exactly this job: it receives webhooks from the official Kick API, verifies
+their signature, and fans events out to local consumers over Server-Sent Events.
+One daemon holds the credentials, every bot reads it with a single HTTP request.
+It also repairs its own subscriptions every thirty minutes. The cost is
+operational rather than technical: it needs a Kick developer app and an HTTPS URL
+Kick can reach, so a tunnel or reverse proxy in front of it.
+
+The sensible plan is route B as the durable spine, with route A measured against
+it on latency before committing, because the 30 s chest window is the binding
+constraint and webhook delivery adds hops that a direct socket does not.
+
+Note that catching an event is only half of it: `!chest` requires **posting** a
+reply into Kick chat within the window, which lands back on the Kick write path
+and its protections. Reception being solved does not make the round trip solved.
+
 ## Open questions
 
 1. Is the 429 a limiter aimed at callers, or platform degradation? Discriminating
