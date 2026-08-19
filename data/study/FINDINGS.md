@@ -349,6 +349,35 @@ shops only earn full rate while the stream is up. At the time of reading: live,
 the July configs already had, so the chatroom never moved even though the channel
 label did.
 
+## The chat is a free measurement firehose
+
+This reframes how the expensive half of the study gets done.
+
+Several hundred people play this game in public, and the game announces outcomes
+in chat. Every catch, payout, chest and event is broadcast to anyone holding the
+socket. So a large part of what the study needs — catch values by rarity, chest
+sizes, how often a frenzy or boom fires, cooldowns implied by how fast a given
+player can repeat a command — is **observable without sending a single request
+and without exposing an account**.
+
+That matters for three reasons:
+
+1. Request budget stops being the binding constraint on those measurements. It
+   only binds on things nobody else's play reveals, like our own balances.
+2. Sample size stops being a problem. Our own accounts could generate a handful
+   of observations an hour; the channel generates everyone's.
+3. It works while shoovy.wtf is down, because it only touches Kick. During this
+   session that has been most of the time.
+
+`chat_listen.py` holds the socket, reconnects on drop, and appends everything to
+`chat.jsonl` — chat messages structured, and any other event kept verbatim rather
+than guessed at now. It listens only and never posts.
+
+The obvious limit: chat shows outcomes, not the hidden state that produced them.
+It gives distributions, not mechanics. Drop rates can be estimated from it; the
+decay curve, capacity numbers and cooldown constants still need either the client
+tables or an authenticated call.
+
 ## Open questions
 
 1. Is the 429 a limiter aimed at callers, or platform degradation? Discriminating

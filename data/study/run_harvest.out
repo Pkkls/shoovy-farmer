@@ -1,0 +1,7 @@
+=== tentative 1  20:50:31 ===
+28/30 a recuperer, gap=30.0s (~14 min)
+  /                          HTTP 502     6378o
+  /fishing                   HTTP 429       12o
+
+429 apres 0 succes. Arret, relance plus tard.
+--- pause 10 min ---
