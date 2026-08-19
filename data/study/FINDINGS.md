@@ -63,16 +63,17 @@ resource". That was wrong and is superseded: the scarce resource is
 
 ## State of knowledge
 
-*Generated from `facts.jsonl` by `render.py`. 157 facts, 164 records with history. Do not hand-edit this section.*
+*Generated from `facts.jsonl` by `render.py`. 164 facts, 171 records with history. Do not hand-edit this section.*
 
 | status | count |
 |---|---|
-| measured | 26 |
-| derived | 13 |
+| measured | 28 |
+| derived | 15 |
+| candidate | 3 |
 | assumed | 109 |
 | refuted | 9 |
 
-### measured (26)
+### measured (28)
 
 Observed on the wire by this study.
 
@@ -100,12 +101,14 @@ Observed on the wire by this study.
 | `infra:shoovy.wtf` | fronting | cloudflare devant railway |  | requests.jsonl |
 | `infra:shoovy.wtf` | cold_start | 40 s | 3 | requests.jsonl |
 | `infra:shoovy.wtf` | accepte_client_stdlib | True |  | requests.jsonl |
+| `mechanic:fishing` | contenu_d_une_annonce_de_prise | poids en lb, espece, rarete, valeur en credits, progression X/100 especes, mention 'new personal best' le cas echeant | 2 | payouts.jsonl via payouts.py |
 | `mechanic:fishing` | valeur_d_une_prise | 210.5 credits | 2 | chat.jsonl via analyze_chat.py |
 | `mechanic:fishing` | decay | 0.1 fraction/jour |  | /api/fishing |
 | `mechanic:fishing` | plancher_de_valeur | 0.1 fraction |  | /api/fishing |
 | `mechanic:fishing` | fenetre_fraiche | 24 h |  | /api/fishing |
+| `mechanic:fishing` | especes_au_catalogue | 100 especes | 2 | payouts.jsonl via payouts.py |
 
-### derived (13)
+### derived (15)
 
 Computed from other facts. Each names what it rests on.
 
@@ -116,6 +119,8 @@ Computed from other facts. Each names what it rests on.
 | `infra:availability` | probabilite_qu_un_enchainement_de_2_appels_aboutisse | 0.025 fraction |  | infer.py |
 | `infra:availability` | probabilite_qu_un_enchainement_de_3_appels_aboutisse | 0.0039 fraction |  | infer.py |
 | `infra:availability` | regle_de_lecture_de_la_disponibilite | retryable: 1-(1-p)^k sur la fenetre; deadline: p^etapes |  | budget.py |
+| `infra:kick` | ce_que_la_voie_kick_ne_resout_pas | la sante du backend du jeu, et les pages web sans equivalent chat |  | chat.jsonl |
+| `infra:kick` | la_boucle_complete_tient_cote_kick | True |  | facts.jsonl + raw/commands.txt |
 | `infra:leaderboard` | debit_net_requis_pour_rattraper_en_30_jours | 26428.0 credits/jour |  | infer.py |
 | `infra:leaderboard` | debit_net_requis_pour_rattraper_en_90_jours | 8809.3 credits/jour |  | infer.py |
 | `mechanic:business` | tentatives_par_collecte_reussie | 6.3 appels |  | infer.py |
@@ -124,6 +129,20 @@ Computed from other facts. Each names what it rests on.
 | `mechanic:business` | cadence_de_collecte_optimale | T* = C / r |  | model.py |
 | `mechanic:fishing` | valeur_conservee_en_vendant_une_fois_par_jour | 1.0 fraction |  | model.py |
 | `mechanic:fishing` | valeur_conservee_apres_une_semaine | 0.778 fraction |  | model.py |
+
+### candidate (3)
+
+A reading that fits, with the thing that would break it named.
+
+| subject | fact | value | n | source |
+|---|---|---|---|---|
+| `infra:kick` | les_commandes_postees_pendant_une_panne_sont_elles_traitees_plus_tard | inconnu |  | chat.jsonl |
+| `mechanic:fishing` | credits_par_livre | 4.37 credits/lb | 2 | payouts.jsonl via payouts.py |
+| `mechanic:fishing` | ce_qui_determine_la_valeur_d_une_prise | le poids, pas la rarete | 2 | payouts.jsonl via payouts.py |
+
+- `arch.commands_queued_during_outage` breaks if: si le jeu traite le chat en direct sans file, une commande postee pendant une panne est simplement perdue, et le seul gain de la voie Kick est de ne plus subir nous-memes le rate limit
+- `fishing.credits_per_pound` breaks if: deux points seulement, et les deux especes different aussi par la rarete; un coefficient par espece ou par rarete produirait la meme coincidence sur un echantillon de cette taille
+- `fishing.value_driver` breaks if: la rarete pourrait piloter la DISTRIBUTION des poids plutot que le prix a la livre, ce qui donnerait la meme observation sur n=2
 
 ### assumed (109)
 
@@ -263,6 +282,8 @@ A fact moving to `refuted` invalidates everything below it.
 
 | fact | rests on |
 |---|---|
+| `arch.kick_loop_limits` | `arch.kick_only_loop`, `infra.game_command_response_rate` |
+| `arch.kick_only_loop` | `chat.pusher_route_works`, `chat.game_bot_exists`, `chat.payouts_are_public` |
 | `business.attempts_per_successful_collect` | `infra.call_success_probability`, `business.optimal_period` |
 | `business.manager_priority` | `business.manager_request_divisor`, `business.attempts_per_successful_collect` |
 | `business.manager_request_divisor` | `business.optimal_period`, `business.manager_capacity_multiplier` |
@@ -281,7 +302,7 @@ A fact moving to `refuted` invalidates everything below it.
 | `target.rate_needed_30d` | `leaderboard.rank1` |
 | `target.rate_needed_90d` | `leaderboard.rank1` |
 
-*Rendered 2026-08-19 21:35.*
+*Rendered 2026-08-19 21:45.*
 
 <!-- FACTS:END -->
 
@@ -777,6 +798,62 @@ politeness setting. Going from 30 s to 10 s between attempts takes fishing from
 64 % to 96 % of its ceiling, at the cost of tripling the call volume. Whether
 that trade is available depends on whether the 429 is ambient or provoked, which
 is still the open question underneath everything.
+
+## The whole grind fits on the Kick side
+
+There is nothing to route around. The 429 and the 502 are the game's own
+deployment failing, which a real browser sees with zero load from us, and which
+the game's bot confirms by answering 2 of 52 player commands. No amount of
+dressing a client up as a browser makes a dead origin answer.
+
+What does exist is a path that takes the game site off our critical path
+entirely.
+
+Of 39 documented commands, **30 are open to an ordinary player** and they cover
+the whole economy: fishing (`!fish` `!fishsell` `!cook` `!prestige` `!treasure`),
+business (`!business` `!collect` `!wash` `!empire`), the market (`!stocks` `!buy`
+`!sell` `!portfolio`), credits (`!credits` `!daily` `!tip` `!leaderboard`), and
+the casino subset (`!gamble` `!plinko` `!duel` `!predict` `!raffle`). The other
+nine are streamer-only and none of them drives yield.
+
+So both halves of the loop live on Kick:
+
+| half | route | state |
+|---|---|---|
+| act | write to Kick chat | proven in July, needs the Kasada-aware write path |
+| observe | Pusher chat socket | verified this session from a bare server |
+
+Neither touches `shoovy.wtf` over HTTP. Our exposure to its availability, its
+rate limiter and its cold starts goes to zero.
+
+### What this does not fix, stated plainly
+
+Posting a command does not oblige the game to process it. During the outage 50 of
+52 player commands went unanswered, and those players were using the same Kick
+path. This removes *us* from the critical path; it does not resuscitate the
+server.
+
+Still web-only, with no chat equivalent: buying gear, buying and upgrading
+businesses, the casino games beyond `!gamble` and `!plinko`, the shop, and raffle
+details. Those are setup and upgrade actions rather than grind, which is a
+convenient split: the repeated earning is Kick-side, the occasional purchasing is
+web-side and can wait for a good window.
+
+### The open question this raises is the most valuable one left
+
+The bot answers 94 to 128 seconds after the command. That is a queue, not live
+handling.
+
+If commands posted during an outage are processed when the service returns, then
+posting during downtime is free work that materialises later, and availability
+stops being a throughput constraint at all. If instead the game reads chat live
+and drops what it cannot handle, the Kick route buys only that we stop absorbing
+the rate limit ourselves.
+
+Those two worlds imply completely different tools. Settling it needs one
+observation: a command posted while the backend is down, and a watch for whether
+its announcement arrives after recovery. Cheap, and it should be the first thing
+run when the site next comes back.
 
 ## Open questions
 

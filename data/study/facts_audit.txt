@@ -1,0 +1,293 @@
+AUDIT DU MAGASIN DE FAITS - facts.jsonl
+Date de l'audit: 2026-08-19
+Perimetre: 157 faits courants (164 enregistrements avec historique), 109 assumed / 26 measured / 13 derived / 9 refuted
+python facts.py check: aucun probleme d'integrite structurelle (pas de derived_from orphelin, pas de supersedes casse)
+Cet audit ne modifie aucun fait. facts.jsonl est inchange.
+
+
+===============================================================
+1. CONTRADICTIONS
+===============================================================
+
+1.1 [PRIORITAIRE] infra.availability.v1 (0.158) contredit infra.game_command_response_rate (0.038)
+    Les deux faits sont MEASURED et tentent de mesurer la meme grandeur au fond: la probabilite
+    qu'une action sur le jeu aboutisse a une reponse utilisable.
+      - infra.availability.v1: 0.158, n=19, confidence=0.3. Le fait s'auto-denonce comme
+        contamine ("deux drivers tournaient pendant une partie de la fenetre donc une part
+        de la charge etait la notre") et comme BORNE BASSE.
+      - infra.game_command_response_rate: 0.038, n=52, confidence=0.5. Mesure INDEPENDANTE
+        (vue depuis les commandes des autres joueurs dans le chat, pas depuis nos propres
+        requetes), echantillon presque 3x plus grand, non contaminee par notre propre trafic.
+    Les deux nombres divergent d'un facteur ~4.2x. Ce n'est pas cosmetique: infra.call_success_probability
+    (0.3 de confidence) est DERIVE de la version contaminee (0.158) et pas de la version
+    independante (0.038), alors que cette derniere est methodologiquement meilleure sur les
+    deux criteres qui comptent (echantillon plus grand, pas de biais d'auto-charge). Toute la
+    cascade qui en depend herite du biais haussier: infra.flow_success_2_steps,
+    infra.flow_success_3_steps, business.attempts_per_successful_collect, et les target.rate_needed_*.
+    Correction proposee: rederiver infra.call_success_probability a partir de
+    infra.game_command_response_rate (ou au minimum ajouter un fait qui reconcilie explicitement
+    les deux mesures et documente lequel fait foi et pourquoi), puis repropager la cascade.
+    Tant que ce n'est pas fait, tout plan de cadence de requetes construit sur 0.158 est
+    optimiste d'un facteur ~4 par rapport a la mesure la plus propre disponible.
+
+1.2 target.rate_needed_30d et target.rate_needed_90d admettent elles-memes etre fausses
+    Ce n'est pas une contradiction entre deux faits mais un fait "derived" qui contredit sa
+    propre methode: le champ method dit explicitement "Les deux hypotheses sont fausses: la
+    cible est une pente, pas un solde, et elle n'a pas encore ete echantillonnee". Un statut
+    derived implique une chaine de confiance; ici la chaine est connue cassee des l'ecriture.
+    Voir aussi section 5 (mauvais statut plutot que mauvaise valeur).
+
+Aucune autre paire mesure-vs-assumed contradictoire au sens strict (meme sujet, meme grandeur,
+valeurs incompatibles) n'a ete trouvee. Un candidat ecarte apres verification dans
+raw/commands.txt: business.payoff_raid_reduction_max (0.75) et business.security_hide_fraction
+(0.75) partagent la meme valeur mais decrivent deux mecaniques reellement distinctes (payoff =
+reduction des odds de raid sur le circuit illegal; security = fraction du till cachee au vol
+!rob sur le circuit legal) — coincidence du "three quarters" reutilise deux fois dans le texte
+source, pas un doublon.
+
+
+===============================================================
+2. DOUBLONS SEMANTIQUES
+===============================================================
+
+Aucun doublon confirme (deux id distincts affirmant la meme grandeur avec des valeurs ou une
+provenance qui se chevauchent au point d'etre interchangeables) n'a ete trouve apres verification
+croisee des deux vagues d'ingestion (seed_facts.py: faits d'origine + config juillet a
+observed_at ~1787167141; seed_commands.py: 90 faits de raw/commands.txt a observed_at
+~1787168012). Les deux scripts couvrent des predicats disjoints sujet par sujet.
+
+Paire ecartee apres verification (voir 1.1 note): business.payoff_raid_reduction_max vs
+business.security_hide_fraction — meme valeur, mecaniques differentes, pas un doublon.
+
+Point de vigilance pour l'avenir plutot qu'un doublon actuel: infra.availability.v1 (0.158) et
+infra.call_success_probability (0.158) portent le meme nombre sous deux id — c'est voulu
+(derived_from documente le lien, ce n'est pas un doublon involontaire), mais ca illustre le
+risque du store: un futur seed pourrait tres bien re-mesurer "probabilite qu'un appel aboutisse"
+sous un troisieme id sans jamais le relier aux deux existants. A surveiller au prochain import
+massif, surtout si un troisieme script de seed est ajoute.
+
+
+===============================================================
+3. INCOHERENCES DE NOMMAGE
+===============================================================
+
+3.1 trader.* vs stocks.* pour le meme sujet (mechanic:stocks)
+    trader.ma_window, trader.entry_dev, trader.exit_dev portent le prefixe d'id "trader."
+    alors que leur subject est mechanic:stocks, comme stocks.trade_cooldown, stocks.fee_pct,
+    stocks.depth, stocks.ticker_count, stocks.change_window_hours, stocks.buy_increases_price,
+    stocks.sell_decreases_price. Le schema n'exige pas de coherence sur l'id (seul subject est
+    valide par validate()), donc `python facts.py what stocks` retrouve bien tout via le
+    subject — mais `python facts.py deps trader.ma_window` ou une recherche par id sur
+    "stocks" ne remonteront pas ces trois faits. Correction proposee: renommer en
+    stocks.trader_ma_window, stocks.trader_entry_dev, stocks.trader_exit_dev pour aligner id
+    et subject (append-only: ajouter les nouveaux id comme des faits qui supersedes les
+    anciens, ne pas editer sur place).
+
+3.2 kick.* vs chat.* pour le meme sujet (infra:kick)
+    kick.chatroom_id, kick.slow_mode_interval, kick.followers_min_minutes utilisent le prefixe
+    "kick.", alors que chat.pusher_route_works, chat.message_rate, chat.ws_closed_to_servers,
+    chat.game_bot_exists, chat.payouts_are_public, chat.bot_response_latency, chat.fish_command_share
+    utilisent "chat." — tous sous le meme subject infra:kick. Moins grave que 3.1 (la
+    distinction "config de la plateforme" vs "comportement observe dans le chat" est
+    defendable), mais c'est la meme classe de probleme: deux conventions d'id concurrentes
+    sous un seul subject, signe des deux scripts de seed qui n'ont jamais partage une
+    convention de nommage.
+
+3.3 Le prefixe "endpoint:" existe dans le schema (voir le message d'erreur de validate()) mais
+    n'est utilise par AUCUN fait. Les observations qui sont en realite des reponses d'endpoints
+    precis (GET /api/leaderboard -> infra:leaderboard, GET /api/fishing -> mechanic:fishing,
+    GET /api/stocks mentionne dans infra.plain_client_ok -> infra:shoovy.wtf) sont eparpillees
+    sur trois subjects differents au lieu d'etre regroupees sous endpoint:leaderboard,
+    endpoint:fishing, endpoint:stocks. Consequence concrete: leaderboard.rank1..rank5 (un
+    solde d'API) partagent le subject infra:leaderboard avec target.rate_needed_30d/90d (une
+    cible de planification derivee) — deux natures de faits tres differentes cohabitent sous
+    un meme subject faute d'un prefixe endpoint: ou constant: dedie. Le prefixe "constant:"
+    est egalement defini et egalement inutilise. Correction proposee: soit adopter endpoint:
+    pour les faits d'observation API brute et deplacer target.rate_needed_* vers un nouveau
+    subject (ex: constant:catchup_rate), soit documenter explicitement dans facts.py que ces
+    deux prefixes sont reserves mais pas encore utilises pour eviter qu'un futur mainteneur
+    pense que c'est un oubli de seed.
+
+3.4 command:!duel n'a pas de pendant event:duel
+    chest, frenzy et boom suivent tous le meme patron: command:!chest / event:chest,
+    command:!frenzy / event:frenzy, command:!boom / event:boom. duel casse le patron: sa
+    syntaxe est sous command:!duel (duel.signature) mais ses regles de resolution
+    (duel.accept_window, duel.refund_on_timeout) sont rangees sous mechanic:casino aux cotes
+    de casino.gamble_win_multiplier, au lieu d'un event:duel dedie. Pas une erreur de schema,
+    mais une rupture du patron etabli par les trois autres evenements du meme fichier source.
+
+3.5 command:!raffle (singulier) vs mechanic:raffles (pluriel)
+    Comparer au reste du store: !stocks/mechanic:stocks (les deux au pluriel),
+    !business/mechanic:business (les deux au singulier), !fish/mechanic:fishing (gerondif
+    coherent). raffle/raffles est la seule paire commande/mecanique du store ou la forme
+    change entre les deux id. Mineur, mais signale la meme absence de convention partagee
+    entre les deux scripts de seed que 3.1 et 3.2.
+
+Bilan section 3: 2 incoherences structurelles nettes (3.1 trader/stocks, 3.3 endpoint/constant
+jamais utilises malgre subject infra: surcharge), 3 incoherences mineures de convention
+(3.2 kick/chat, 3.4 duel hors patron event:, 3.5 raffle/raffles).
+
+
+===============================================================
+4. FAITS PORTEURS (assumed a fort impact sur le plan)
+===============================================================
+
+Critere: parmi les 109 assumed, lesquels pilotent reellement le rendement ou la cadence sous
+l'objectif "maximiser credits/heure sous disponibilite serveur tres basse" — pas les details
+cosmetiques (cock.range, boobs.range, ttson.permission, etc., qui n'ont aucun effet sur le
+credits/heure et peuvent etre ignores sans risque).
+
+Classement, du plus porteur au moins porteur:
+
+1. business.till_stops_when_full (true, confidence 0.8)
+   Racine d'une cascade de 5 faits derived: business.optimal_period, manager_request_divisor,
+   attempts_per_successful_collect, manager_priority, et indirectement toute decision d'achat
+   de manager. Si ce fait est faux (till ne plafonne pas, ou plafonne autrement, ou decay au
+   lieu de saturer), le modele entier de cadence de collecte optimale (T* = C/r) s'effondre et
+   toute la logique "acheter un manager pour tolerer une fenetre de collecte ratee" perd son
+   fondement. C'est le fait unique dont depend le plus grand nombre d'autres faits du store.
+
+2. business.full_rate_only_live (true, confidence 0.8)
+   Multiplicateur potentiellement enorme et totalement non quantifie sur la mecanique de
+   revenu dominante: raw/commands.txt dit "full rate while the stream is live and a fraction
+   of it once the stream ends" mais aucun fait ne chiffre cette fraction. Sous une contrainte
+   de disponibilite tres basse, cette fraction determine si "farmer" hors stream a la moindre
+   valeur ou si l'essentiel du gain doit etre concentre sur les fenetres de live. C'est un
+   levier qui peut changer le plan entier (ou et quand concentrer les tentatives de collecte)
+   et il n'existe aujourd'hui aucun chiffre a cote du booleen.
+
+3. daily.amount (200 credits) et daily.period_hours (20h) (confidence 0.3 chacun)
+   La confidence la plus basse de tout le store hors target.rate_needed_*, heritee d'un code
+   de juillet jamais reverifie. C'est pourtant la source de credits la moins chere en
+   requetes: un seul appel reussi suffit, sans dependre du cooldown, du plafond de till ou de
+   la probabilite d'un enchainement de plusieurs appels. Sous une disponibilite de 3.8% a
+   15.8%, une commande a cout de requete unique et a gain garanti peut dominer le
+   credits/heure reel simplement parce qu'elle ne se heurte jamais a la contrainte
+   d'enchainement (infra.flow_success_2_steps / 3_steps) qui plombe tout le reste. Si le
+   montant ou la periode ont change depuis juillet, c'est le calcul de baseline le plus
+   sensible du plan.
+
+Mentions complementaires (portee reelle mais secondaire par rapport aux trois ci-dessus):
+- business.manager_capacity_multiplier (3, confidence 0.7): meme famille que #1, deja
+  partiellement couvert par la cascade derivee, mais vaut la peine d'etre verifie separement
+  car "3" fixe directement le ROI d'achat du manager.
+- business.illegal_yield_higher_than_legal (true, confidence 0.7): le texte source confirme
+  que le circuit illegal rapporte plus par credit investi MAIS expose a un risque de raid non
+  quantifie ("shuts the place for hours"). Ce fait affirme le benefice sans que son cout
+  (frequence et duree des raids) existe nulle part dans le store — dangereux a suivre tel
+  quel pour une decision d'allocation entre circuit legal et illegal.
+- casino.gamble_win_multiplier (2, confidence 0.8): inutilisable pour calculer une esperance
+  de gain tant qu'aucun fait ne donne la probabilite de victoire au !gamble — voir section 5.
+
+
+===============================================================
+5. CHAMPS MANQUANTS OU DOUTEUX
+===============================================================
+
+5.1 Methode "boilerplate" sur la quasi-totalite des assumed
+    99 des 109 faits assumed partagent un des deux textes suivants au mot pres:
+      - "affirme par la page /commands (raw/commands.txt) du site, jamais observe se
+        produire" (x90)
+      - "affirme par la page /commands du site, jamais observe se produire" (x9, la
+        premiere vague avant l'harmonisation du libelle)
+    Le champ method existe et n'est pas vide au sens du schema, mais il ne differencie aucun
+    fait d'un autre: impossible de savoir a partir du texte seul quelle section ou quelle
+    phrase exacte de commands.txt justifie chaque fait. En pratique il faut rouvrir
+    raw/commands.txt et rechercher a la main (ce que cet audit a du faire pour la section 1
+    et 2). Correction proposee pour les prochains seeds: faire porter method sur l'extrait
+    source precis (citation courte ou ligne de commands.txt), pas sur une phrase generique
+    repetee par le script.
+
+5.2 casino.gamble_win_multiplier (id) — value=2 sans unit
+    Un multiplicateur numerique sans unit ni fait compagnon donnant la probabilite de
+    victoire. "2" seul ne permet de calculer aucune esperance de gain: est-ce x2 la mise,
+    +2 credits, 200%? Le predicate laisse deviner mais rien ne le fixe formellement.
+    Correction proposee: ajouter unit="x" (ou equivalent explicite), et surtout ajouter le
+    fait manquant casino.gamble_win_probability des que mesurable — sans lui ce fait est
+    decoratif pour tout calcul de credits/heure.
+
+5.3 target.rate_needed_30d / target.rate_needed_90d — statut "derived" pour un calcul connu faux
+    Deja signale en 1.2. Le schema a une case plus honnete pour cette situation: status=
+    "candidate" avec invalidated_by (le schema l'exige d'ailleurs des qu'on utilise ce
+    statut). Ici on a l'inverse — un fait qui s'auto-qualifie de faux dans son propre champ
+    method mais qui reste marque "derived", statut qui dans le reste du store signale une
+    chaine de confiance stable. Correction proposee: republier ces deux id avec status=
+    "candidate" et invalidated_by="la pente du rang 1 n'a pas encore ete echantillonnee,
+    hypothese de rang 1 immobile fausse par construction".
+
+5.4 infra.cold_start_seconds — value=40 ne correspond a aucun des 3 echantillons ni a leur
+    moyenne. dispersion donne "41.3 / 5.7 / 0.2 s sur 3 appels successifs" (rapport >200x
+    entre le plus long et le plus court): la variance suggere que seul le premier appel est
+    un vrai cold start, les deux suivants etant des appels a serveur deja chaud et n'ayant
+    rien a faire dans le meme echantillon. value=40 semble etre 41.3 arrondi (le premier
+    appel seul) mais ce n'est precise nulle part. Correction proposee: clarifier dans method
+    si value est le premier echantillon ou autre chose, et envisager de retirer les 2
+    derniers appels de l'echantillon (ils mesurent une latence a chaud, pas un cold start) ou
+    de creer un fait separe pour la latence a chaud.
+
+5.5 Champs "unit" absents sur des compteurs purs (kick.chatroom_id, stocks.ticker_count,
+    leaderboard.top_n_shown, predict.one_bet_per_prediction, business.manager_capacity_multiplier,
+    business.manager_request_divisor) — priorite basse, ce sont des comptes/identifiants ou
+    des multiplicateurs deja explicites par leur predicate, contrairement a 5.2 ou l'ambiguite
+    est reelle. Mentionne pour completude, pas d'action requise.
+
+5.6 Aucune violation dure du schema trouvee: pas de confidence hors [0,1], pas de status=
+    "random" sans n/dispersion, pas de derived_from ou supersedes orphelin (confirme par
+    python facts.py check).
+
+
+===============================================================
+PRIORITE DE VERIFICATION (assumed a mesurer en premier des que le serveur repond)
+===============================================================
+
+Prealable transverse (pas un assumed, mais bloquant pour interpreter tout le reste): reconcilier
+infra.availability.v1 (0.158) et infra.game_command_response_rate (0.038) avec un echantillon
+propre et de taille correcte des que le serveur est stable — tout ce qui suit en depend pour
+etre chiffre correctement, meme si l'ordre de priorite qualitative ci-dessous reste valable
+independamment du chiffre exact.
+
+1. business.till_stops_when_full — lancer !business, laisser le till se remplir sans
+   collecter pendant plusieurs heures, comparer le solde affiche a intervalles reguliers:
+   plafonne-t-il, et a quelle valeur C?
+
+2. business.full_rate_only_live — comparer le debit du till (credits accumules / heure)
+   pendant une fenetre de live et une fenetre hors live de duree comparable, meme
+   configuration de boutiques.
+
+3. daily.amount et daily.period_hours — lancer !daily, noter le montant recu et l'horodatage,
+   reessayer periodiquement jusqu'a ce que la commande fonctionne a nouveau pour mesurer la
+   vraie periode de recharge.
+
+4. business.manager_capacity_multiplier — mesurer la capacite max du till avant achat d'un
+   manager, racheter un manager, remesurer la capacite max apres.
+
+5. business.illegal_yield_higher_than_legal et business.payoff_raid_reduction_max —
+   comparer le rendement par credit investi entre boutiques legales et illegales sur un
+   echantillon de collectes, et logger frequence/duree des raids subis sur le circuit illegal.
+
+6. fishing.cooldown_seconds — remesurer sur un large echantillon une fois que le backend
+   repond de facon fiable (le precedent refus est du a un jeu qui ne repondait pas, pas a une
+   absence de cooldown); sans ca, casts_per_hour_nominal et toute sa cascade retry restent a
+   l'arret.
+
+7. stocks.fee_pct et stocks.depth — passer un !buy suivi immediatement d'un !sell sur le
+   meme ticker, comparer le montant net recupere a ce que predit fee_pct/depth.
+
+8. casino.gamble_win_multiplier (et mesurer en meme temps la probabilite de victoire absente
+   du store) — lancer une serie de !gamble a mise fixe et logger chaque issue.
+
+9. Mecaniques d'evenements chest/frenzy/boom (chest.response_window, chest.default_trigger_word,
+   frenzy.default_duration_seconds, boom.till_full_blocks_boom) — ne peuvent pas etre
+   provoquees par l'etude (reservees au streamer/admin); a observer passivement des qu'un
+   evenement survient. Priorite basse operationnellement malgre l'importance nominale, faute
+   de pouvoir les declencher soi-meme. event.streamer_events_absent (0 occurrence sur 1270
+   messages observes) suggere qu'ils sont rares: ne pas batir le plan dessus en attendant.
+
+10. business.security_hide_fraction, business.collect_hides_till_from_rob,
+    business.illegal_till_immune_to_rob, crime.rob_force_sells_victim_stock,
+    crime.rob_fine_force_sells_own_stock — necessitent un partenaire de test qui lance !rob
+    contre le compte de l'etude; priorite basse, difficile a tester seul.
+
+11. Mecaniques cosmetiques (cock.range, boobs.range) et commandes annexes sans impact
+    credits/heure (raffles.*, tts.*) — a ne pas verifier en priorite, aucun effet sur
+    l'objectif de rendement.
