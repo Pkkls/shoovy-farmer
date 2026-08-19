@@ -225,6 +225,58 @@ crime page for both attack and defence. It is also the one lever in this study
 that takes credits from other people rather than generating them, so whether to
 use it is a decision for the repository owner, not a modelling detail.
 
+## Two optima that fall out of the structure alone
+
+`model.py` derives these. They need no measured constant, only the shape of the
+mechanic, so they hold whatever the rates turn out to be. Self-checks included;
+run `python model.py`.
+
+### Business: collect exactly when the till fills, never sooner
+
+A till fills at rate `r` and stops at capacity `C`. Income when collecting every
+`T` is `min(r·T, C)/T`. That is flat at `r` for every `T ≤ C/r`, then falls away
+as `C/T`.
+
+So there is a whole family of optimal cadences, and the cheapest member is
+`T* = C/r` exactly. Collecting more often earns **nothing extra** and burns
+requests; collecting later loses income proportionally. Credits per request is
+simply `C`, and a manager tripling capacity divides the request cost by three
+while leaving credits per hour untouched.
+
+Two things bend this, both from the command reference:
+
+- Shops earn full rate only while the stream is live. `r` is not constant, so
+  `C/r` stretches when the stream is off. The cadence tracks the streamer's
+  schedule, not the clock.
+- A `!boom` pays into whatever room a till has, and a full till gets nothing.
+  That is a call option on empty space, exercised at an unpredictable moment, and
+  it biases the cadence *below* `C/r`: collecting early costs only requests and
+  keeps the option alive.
+
+Together these say the collection loop must be event-driven. A fixed timer is
+wrong in both directions.
+
+### Fishing: the net bleeds far slower than the wording suggests
+
+The command page warns that "a full net is a bleeding net". The public decay
+parameters say otherwise once you do the arithmetic: catches hold **full** value
+for a 24 h fresh window, and only then decay at 10 %/day toward a 10 % floor.
+
+| sell cadence | value kept |
+|---|---|
+| every 12 h | 100.0 % |
+| daily | 100.0 % |
+| weekly | 77.8 % |
+
+Selling more than once a day is therefore pure waste — there is nothing to save.
+Even a week of neglect costs about a fifth. The operational conclusion is the
+opposite of the urgency the wording implies: **the request budget belongs to
+casting, not to selling.** Selling is roughly one call per account per day.
+
+Caveat: this assumes catches accumulate uniformly and that decay applies per
+catch from its own capture time. Both are readings of the public `decay` block,
+not measurements, and a stack that decays as a unit would change the numbers.
+
 ## Open questions
 
 1. Is the 429 a limiter aimed at callers, or platform degradation? Discriminating
