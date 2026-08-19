@@ -63,13 +63,13 @@ resource". That was wrong and is superseded: the scarce resource is
 
 ## State of knowledge
 
-*Generated from `facts.jsonl` by `render.py`. 164 facts, 171 records with history. Do not hand-edit this section.*
+*Generated from `facts.jsonl` by `render.py`. 166 facts, 175 records with history. Do not hand-edit this section.*
 
 | status | count |
 |---|---|
 | measured | 28 |
 | derived | 15 |
-| candidate | 3 |
+| candidate | 5 |
 | assumed | 109 |
 | refuted | 9 |
 
@@ -115,14 +115,14 @@ Computed from other facts. Each names what it rests on.
 | subject | fact | value | n | source |
 |---|---|---|---|---|
 | `event:chest` | probabilite_de_capter_un_chest | indeterminee, gouvernee par la fiabilite d'ecriture Kick |  | infer.py |
+| `infra:availability` | la_disponibilite_n_est_pas_un_nombre_unique | lecture triviale 0.158, traitement d'une commande 0.038 |  | facts_audit.txt |
 | `infra:availability` | probabilite_qu_un_appel_aboutisse | 0.158 fraction |  | infer.py |
 | `infra:availability` | probabilite_qu_un_enchainement_de_2_appels_aboutisse | 0.025 fraction |  | infer.py |
 | `infra:availability` | probabilite_qu_un_enchainement_de_3_appels_aboutisse | 0.0039 fraction |  | infer.py |
+| `infra:availability` | un_read_reussi_ne_garantit_pas_qu_une_action_aboutit | True |  | facts_audit.txt |
 | `infra:availability` | regle_de_lecture_de_la_disponibilite | retryable: 1-(1-p)^k sur la fenetre; deadline: p^etapes |  | budget.py |
 | `infra:kick` | ce_que_la_voie_kick_ne_resout_pas | la sante du backend du jeu, et les pages web sans equivalent chat |  | chat.jsonl |
 | `infra:kick` | la_boucle_complete_tient_cote_kick | True |  | facts.jsonl + raw/commands.txt |
-| `infra:leaderboard` | debit_net_requis_pour_rattraper_en_30_jours | 26428.0 credits/jour |  | infer.py |
-| `infra:leaderboard` | debit_net_requis_pour_rattraper_en_90_jours | 8809.3 credits/jour |  | infer.py |
 | `mechanic:business` | tentatives_par_collecte_reussie | 6.3 appels |  | infer.py |
 | `mechanic:business` | rang_d_achat_du_manager | premier achat rentable |  | infer.py |
 | `mechanic:business` | division_du_cout_en_requetes_par_manager | 3 |  | model.py |
@@ -130,17 +130,21 @@ Computed from other facts. Each names what it rests on.
 | `mechanic:fishing` | valeur_conservee_en_vendant_une_fois_par_jour | 1.0 fraction |  | model.py |
 | `mechanic:fishing` | valeur_conservee_apres_une_semaine | 0.778 fraction |  | model.py |
 
-### candidate (3)
+### candidate (5)
 
 A reading that fits, with the thing that would break it named.
 
 | subject | fact | value | n | source |
 |---|---|---|---|---|
 | `infra:kick` | les_commandes_postees_pendant_une_panne_sont_elles_traitees_plus_tard | inconnu |  | chat.jsonl |
+| `infra:leaderboard` | debit_net_requis_pour_rattraper_en_30_jours | 26428.0 credits/jour |  | infer.py |
+| `infra:leaderboard` | debit_net_requis_pour_rattraper_en_90_jours | 8809.3 credits/jour |  | infer.py |
 | `mechanic:fishing` | credits_par_livre | 4.37 credits/lb | 2 | payouts.jsonl via payouts.py |
 | `mechanic:fishing` | ce_qui_determine_la_valeur_d_une_prise | le poids, pas la rarete | 2 | payouts.jsonl via payouts.py |
 
 - `arch.commands_queued_during_outage` breaks if: si le jeu traite le chat en direct sans file, une commande postee pendant une panne est simplement perdue, et le seul gain de la voie Kick est de ne plus subir nous-memes le rate limit
+- `target.rate_needed_30d` breaks if: signale par l'audit: marque derive alors que sa propre methode dit que ses deux hypotheses sont fausses (depart de zero, rang 1 immobile). Un calcul juste sur une premisse fausse reste faux. Sans la pente du rang 1, ce chiffre n'a pas de sens et ne doit pas servir de cible
+- `target.rate_needed_90d` breaks if: signale par l'audit: marque derive alors que sa propre methode dit que ses deux hypotheses sont fausses (depart de zero, rang 1 immobile). Un calcul juste sur une premisse fausse reste faux. Sans la pente du rang 1, ce chiffre n'a pas de sens et ne doit pas servir de cible
 - `fishing.credits_per_pound` breaks if: deux points seulement, et les deux especes different aussi par la rarete; un coefficient par espece ou par rarete produirait la meme coincidence sur un echantillon de cette taille
 - `fishing.value_driver` breaks if: la rarete pourrait piloter la DISTRIBUTION des poids plutot que le prix a la livre, ce qui donnerait la meme observation sur n=2
 
@@ -295,14 +299,16 @@ A fact moving to `refuted` invalidates everything below it.
 | `fishing.daily_sell_lossless` | `fishing.decay_per_day`, `fishing.fresh_hours` |
 | `fishing.sell_share_of_calls` | `fishing.daily_sell_lossless`, `fishing.casts_per_hour_nominal` |
 | `fishing.weekly_retention` | `fishing.decay_per_day`, `fishing.fresh_hours`, `fishing.floor_fraction` |
+| `infra.availability_is_per_operation` | `infra.availability.v1`, `infra.game_command_response_rate` |
 | `infra.call_success_probability` | `infra.availability.v1` |
 | `infra.flow_success_2_steps` | `infra.call_success_probability` |
 | `infra.flow_success_3_steps` | `infra.call_success_probability` |
+| `infra.read_success_does_not_imply_write` | `infra.availability_is_per_operation` |
 | `infra.retry_vs_deadline_split` | `infra.call_success_probability` |
 | `target.rate_needed_30d` | `leaderboard.rank1` |
 | `target.rate_needed_90d` | `leaderboard.rank1` |
 
-*Rendered 2026-08-19 21:45.*
+*Rendered 2026-08-19 21:48.*
 
 <!-- FACTS:END -->
 
@@ -854,6 +860,49 @@ Those two worlds imply completely different tools. Settling it needs one
 observation: a command posted while the backend is down, and a watch for whether
 its announcement arrives after recovery. Cheap, and it should be the first thing
 run when the site next comes back.
+
+## Availability is not one number, it is one per operation
+
+An audit of the store flagged two figures as contradictory:
+
+| figure | value | n | how it was taken |
+|---|---|---|---|
+| `infra.availability.v1` | 0.158 | 19 | share of **our** HTTP requests returning 200 |
+| `infra.game_command_response_rate` | 0.038 | 52 | share of **players'** commands drawing a reply |
+
+A factor of four apart, and every derived fact was hanging off the first one,
+which is also the contaminated one. The audit was right to stop on it.
+
+They are not contradictory. They measure different depths of the same stack.
+Returning 200 on `/api/me` is a trivial read an edge can serve while everything
+behind it is broken. Answering `!fish` requires parsing the command, rolling a
+catch, writing it to a database and posting back into Kick chat. An infrastructure
+can do the first and fail the second all day.
+
+So the study now carries **`infra.availability_is_per_operation`**, and the
+practical consequence is sharper than either number:
+
+> A successful read does not imply a successful write.
+
+That kills a design instinct that was about to be built in. Checking state before
+acting tells you nothing about whether the action will land, and our own request
+log is not evidence that actions succeed. Every action has to be confirmed by its
+**effect** — the bot's announcement, a balance that moved — never by the HTTP
+status of the call that requested it.
+
+It also means the retry maths from the section above applies to reads with
+p = 0.158 and to commands with something closer to p = 0.038, which makes the
+long-window mechanics (collecting, daily) more attractive still relative to the
+short-cooldown ones.
+
+Two smaller corrections from the same audit. The catch-up rate targets
+(26 428/day for 30 days, 8 809 for 90) were marked `derived` while their own
+method text admitted both premises are false: they assume a standing start and a
+frozen rank 1. Correct arithmetic on a false premise is still false, so they are
+demoted to `candidate` at confidence 0.1 and must not be used as targets until the
+leader's slope is sampled. And the store has a naming split to clean up:
+`trader.*` and `stocks.*` ids both describe `mechanic:stocks`, while the schema's
+`endpoint:` and `constant:` prefixes are declared but never used.
 
 ## Open questions
 
