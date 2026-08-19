@@ -289,13 +289,20 @@ Cloudflare rejects both the token endpoint and the handshake, and a Chrome TLS
 fingerprint does not change that. Anything built directly on it from a server
 will fail; do not spend time there.
 
-**Route A, legacy Pusher.** Kick moved chat transport onto its own gateway, but
-the classic public Pusher transport is still live for the chatroom channel. A
-server can hold that socket with a stock websocket client. Lowest latency of the
-two, which matters: a chest splits among whoever answers within 30 seconds, so
-the budget between "message arrives" and "reply posted" is small and every hop
-spends it. Needs verification that it is still live before anything is built on
-it, since this is inherited knowledge and Kick has moved this once already.
+**Route A, legacy Pusher — verified working, 2026-08-19.** `pusher_probe.py`
+connects from a plain Python process, no browser, no TLS impersonation, and gets
+`pusher:connection_established`, an accepted subscription on
+`chatrooms.<id>.v2`, and a live stream of `App\Events\ChatMessageEvent`. Real
+chat messages, in real time, from a server socket.
+
+This corrects an inherited belief worth stating plainly: "Kick's chat websocket
+is closed to servers" is true of `websockets.kick.com` and **false** of the
+legacy Pusher transport, which is still carrying the chatroom channel today.
+
+It is also the cheaper route by a distance: no developer app, no public HTTPS
+URL, no tunnel, no webhook signature handling. And it is the lower-latency one,
+which matters because a chest splits among whoever answers within 30 seconds and
+every hop spends that budget.
 
 **Route B, official webhooks via kickbus.** `Pkkls/kickbus` already exists and
 does exactly this job: it receives webhooks from the official Kick API, verifies
@@ -305,13 +312,42 @@ It also repairs its own subscriptions every thirty minutes. The cost is
 operational rather than technical: it needs a Kick developer app and an HTTPS URL
 Kick can reach, so a tunnel or reverse proxy in front of it.
 
-The sensible plan is route B as the durable spine, with route A measured against
-it on latency before committing, because the 30 s chest window is the binding
-constraint and webhook delivery adds hops that a direct socket does not.
+Route A is now the default: it is verified, free, and lower latency. Route B
+stays documented as the fallback if Kick ever closes the legacy transport, which
+it has already done once to the gateway.
 
 Note that catching an event is only half of it: `!chest` requires **posting** a
 reply into Kick chat within the window, which lands back on the Kick write path
 and its protections. Reception being solved does not make the round trip solved.
+
+## Chat is a gated surface, and the gate costs more than the login
+
+`kick.com/api/v2/channels/<slug>` answers a plain HTTP client with HTTP 200 — no
+Cloudflare challenge, no impersonation needed — and it carries the chatroom
+settings. Read 2026-08-19:
+
+| setting | value | what it costs us |
+|---|---|---|
+| `chat_mode` | public | — |
+| `slow_mode` | true, `message_interval` 1 | one message per second. Not binding: chat income is once a minute anyway |
+| `followers_mode` | true, `following_min_duration` **6** | **an account must have followed for 6 minutes before it can post at all** |
+| `subscribers_mode` | false | — |
+
+The follower gate is the real cost of enrolling any account. Every credit-earning
+path that runs through chat — the per-minute chat income, `!daily`, `!fish`,
+`!collect`, answering a chest — is closed until that account follows and waits.
+
+That matters more than it looks, because following is the one Kick action known
+to be hard to automate: it sits behind Kasada and has only ever worked from a
+browser session driven by hand. So the cost of adding an account is not the
+login, it is a manual follow plus a six-minute wait, and burst-following is
+itself known to trip a rate penalty.
+
+The same endpoint gives the live state, which the business model needs since
+shops only earn full rate while the stream is up. At the time of reading: live,
+684 viewers, session started 17:34 UTC. `chatroom.id` is 29834074, matching what
+the July configs already had, so the chatroom never moved even though the channel
+label did.
 
 ## Open questions
 

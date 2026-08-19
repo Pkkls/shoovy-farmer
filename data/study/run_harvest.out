@@ -4,3 +4,6 @@
 
 429 apres 0 succes. Arret, relance plus tard.
 --- pause 10 min ---
+=== tentative 2  20:46:24 ===
+28/30 a recuperer, gap=30.0s (~14 min)
+  /                          HTTP 502     6378o
