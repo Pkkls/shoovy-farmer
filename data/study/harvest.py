@@ -41,7 +41,14 @@ def main():
 
     done = 0
     for path in todo:
-        status, body, _ = client.get(path)
+        # A read timeout is routine here: cold starts run past 40 s and the
+        # origin drops connections while it flaps. One bad target must not end
+        # the pass, or a single slow response costs the whole window.
+        try:
+            status, body, _ = client.get(path)
+        except Exception as e:
+            print(f"  {path:26} {type(e).__name__}", flush=True)
+            continue
         print(f"  {path:26} HTTP {status}  {len(body):>7}o", flush=True)
 
         if status == 429:
@@ -52,7 +59,15 @@ def main():
                 f.write(body)
             done += 1
 
-    print(f"\n{done}/{len(todo)} recuperes dans {RAW}", flush=True)
+    # Only report success when every target is actually on disk, otherwise the
+    # driver would stop retrying while the flapping ones are still missing.
+    missing = [p for p in TARGETS
+               if not os.path.exists(os.path.join(RAW, slug(p)))]
+    print(f"\n{done} recuperes ce tour, {len(TARGETS) - len(missing)}/{len(TARGETS)} "
+          f"au total dans {RAW}", flush=True)
+    if missing:
+        print(f"manquants: {' '.join(missing)}", flush=True)
+        return 1
     return 0
 
 
