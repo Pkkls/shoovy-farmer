@@ -404,9 +404,19 @@ First reading, 19 requests over 38 minutes (20:24-21:02, 2026-08-19):
 **Longest run of consecutive usable answers: 2.**
 
 Nineteen samples is a small n and the interval around 15.8 % is wide, so treat
-the figure as an order of magnitude rather than a number. The qualitative shape
-is not in doubt though, because it is corroborated independently: three harvest
-passes over 30 targets have captured 2 of them.
+the figure as an order of magnitude rather than a number.
+
+**And it is contaminated.** For roughly fifteen minutes of that window two
+harvest drivers were running at once, because restarting one never stopped the
+old one. That doubled our own request rate against the backend, so some share of
+those 429s may be self-inflicted rather than ambient. The figure is therefore a
+*lower* bound on availability, not an estimate of it. The driver now holds a pid
+lock so this cannot recur, and the number needs redoing over a clean window
+before anything is built on the precise value.
+
+The qualitative shape survives the contamination: a real browser was getting 502
+from Cloudflare with no load from us at all, the outage predates the duplicate
+driver by hours, and four harvest passes over 30 targets have captured 2 of them.
 
 This reframes the study's central constraint. Earlier notes called request budget
 the scarce resource, on the theory that a limiter was punishing us. That was the
