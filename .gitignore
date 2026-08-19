@@ -2,10 +2,17 @@
 accounts.json
 
 # Runtime data (logs, state, stop flag, bot status)
-data/
+data/*
+
+# ...except the market study: its scripts, request log and raw captures are
+# meant to be public and reviewable.
+!data/study/
 
 # Compiled binaries (rebuild with build.bat)
 bin/
 *.exe
 
 *.log
+
+# Python bytecode
+__pycache__/
