@@ -1,0 +1,602 @@
+{
+  "_meta": {
+    "source_file": "raw/games.txt",
+    "source_bytes": 229103,
+    "source_lines": 5013,
+    "method": "Parsing regex du HTML/JS statique. Chaque valeur porte soit status=found_in_client (valeur litterale localisee, avec numero de ligne), soit status=not_found (le pattern attendu n'apparait pas dans le fichier -- champ marque manquant explicitement, aucune valeur devinee).",
+    "central_finding": "La quasi-totalite des donnees economiques (tables de multiplicateurs, probabilites/chances, RTP, taux de rakeback, mises min/max, poids de tirage) sont recuperees par le client au chargement via fetch('/api/games/info') ou des endpoints par jeu (/api/mines/*, /api/dragon/*, /api/rakeback, ...). Ce fichier est une capture STATIQUE du HTML/JS envoye par le serveur ; il ne contient JAMAIS la reponse JSON de ces appels. Le client est un pur moteur de rendu pour des donnees calculees et gardees cote serveur -- ce que ce fichier peut documenter, ce sont les CONSTANTES STRUCTURELLES (tailles de grille, options de menu, ratios de regle ecrits dans une chaine d'affichage comme le 3:2 du blackjack), jamais les probabilites ou les tables de gains."
+  },
+  "games": {
+    "plinko": {
+      "row_options": {
+        "value": [
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16
+        ],
+        "status": "found_in_client",
+        "line": 1356
+      },
+      "default_rows": {
+        "value": 16,
+        "status": "found_in_client",
+        "line": 1361
+      },
+      "default_risk": {
+        "value": "medium",
+        "status": "found_in_client",
+        "line": 1361
+      },
+      "risk_levels": {
+        "value": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "status": "found_in_client",
+        "line": 751
+      },
+      "payout_tables": {
+        "value": null,
+        "status": "not_found",
+        "reason": "st.tables = info.plinko_tables -- table de gains par (rows, risk) recuperee via fetch('/api/games/info'), reponse non capturee dans ce fichier"
+      },
+      "bet_min": {
+        "value": null,
+        "status": "not_found",
+        "reason": "info.bet_min -- valeur fournie par /api/games/info, non litterale ici"
+      },
+      "bet_max": {
+        "value": null,
+        "status": "not_found",
+        "reason": "aucun champ bet_max reference cote client dans ce fichier"
+      }
+    },
+    "mines": {
+      "grid_tiles": {
+        "value": 25,
+        "status": "found_in_client",
+        "line": 3030,
+        "note": "grille = 5x5 (repeat(5,1fr) en CSS)"
+      },
+      "max_mines_selectable": {
+        "value": 24,
+        "status": "found_in_client",
+        "line": 3039
+      },
+      "default_mines": {
+        "value": 3,
+        "status": "found_in_client",
+        "line": 3042
+      },
+      "multiplier_table": {
+        "value": null,
+        "status": "not_found",
+        "reason": "multiplicateur/paiement calcule et renvoye par le serveur a chaque pick (g.multiplier, g.payout, g.safe_pct via /api/mines/*) -- pas de formule ni de table litterale dans le client"
+      }
+    },
+    "dragon_tower": {
+      "difficulty_tiers": {
+        "value": [
+          "easy",
+          "medium",
+          "hard",
+          "expert",
+          "master"
+        ],
+        "status": "found_in_client",
+        "line": 3203
+      },
+      "win_probability_formula": {
+        "value": null,
+        "status": "not_found",
+        "reason": "eggs/tiles probability display formula not found"
+      },
+      "eggs_tiles_per_difficulty": {
+        "value": null,
+        "status": "not_found",
+        "reason": "INFO.dragon.difficulties[name] = {eggs, tiles, multipliers, ...} recupere via fetch('/api/games/info'), reponse non capturee"
+      },
+      "multiplier_ladder": {
+        "value": null,
+        "status": "not_found",
+        "reason": "d.multipliers[] par palier -- server-only"
+      }
+    },
+    "cases": {
+      "difficulty_tiers": {
+        "value": [
+          "easy",
+          "medium",
+          "hard",
+          "expert",
+          "master"
+        ],
+        "status": "found_in_client",
+        "line": 3450
+      },
+      "weights_per_tier": {
+        "value": null,
+        "status": "not_found",
+        "reason": "conf().weights = INFO.difficulties[name].weights -- ponderation du tirage recuperee via /api/games/info, jamais litterale ici"
+      },
+      "colours_per_tier": {
+        "value": null,
+        "status": "not_found",
+        "reason": "COLOURS = INFO.colours -- server-only"
+      },
+      "payout_multipliers": {
+        "value": null,
+        "status": "not_found",
+        "reason": "aucune table de gains cases litterale dans le client"
+      }
+    },
+    "keno": {
+      "board_size": {
+        "value": 40,
+        "status": "found_in_client",
+        "line": 3706
+      },
+      "numbers_drawn_per_round": {
+        "value": 10,
+        "status": "found_in_client",
+        "line": 3829,
+        "note": "texte client: \"Ten of the forty numbers are drawn every round\""
+      },
+      "max_picks": {
+        "value": 10,
+        "status": "found_in_client",
+        "line": 3694
+      },
+      "difficulty_tiers": {
+        "value": [
+          "classic",
+          "low",
+          "medium",
+          "high"
+        ],
+        "status": "found_in_client",
+        "line": 3687
+      },
+      "multipliers_chances_rtp": {
+        "value": null,
+        "status": "not_found",
+        "reason": "INFO.difficulties[tier][pickCount] = {multipliers[], chances[], rtp} -- le client affiche explicitement une probabilite (c.chances[k]) et un RTP (c.rtp) par palier de hits, MAIS ces objets sont recuperes via fetch('/api/games/info') ; ce fichier statique ne contient jamais la reponse JSON, donc aucune valeur numerique n'est recuperable ici malgre le fait que le concept de RTP soit explicite cote client"
+      }
+    },
+    "blackjack": {
+      "natural_blackjack_payout": {
+        "value": "3:2",
+        "status": "found_in_client",
+        "line": 2683,
+        "note": "chaine client: \"BLACKJACK! Paid 3:2\""
+      },
+      "deck_count": {
+        "value": null,
+        "status": "not_found",
+        "reason": "nombre de jeux de cartes dans le sabot non ecrit dans le client"
+      },
+      "dealer_rules": {
+        "value": null,
+        "status": "not_found",
+        "reason": "regle du croupier (hit/stand soft 17) non ecrite dans le client"
+      },
+      "double_split_restrictions": {
+        "value": null,
+        "status": "not_found",
+        "reason": "can_double / can_split sont des booleens renvoyes par le serveur par main (game.can_double, game.can_split), pas une regle fixe lisible dans le client"
+      }
+    },
+    "slots": {
+      "grid": {
+        "value": {
+          "reels": 6,
+          "rows": 5
+        },
+        "status": "found_in_client",
+        "line": 1603
+      },
+      "symbols_paytable": {
+        "value": null,
+        "status": "not_found",
+        "reason": "info.symbols[].pays, info.scatter_pays, info.fs_award, info.fs_mult -- la table de gains est *construite dynamiquement* dans buildPaytable(info) a partir de la reponse de /api/games/info ; aucun symbole, aucune valeur de paiement n'est ecrit en dur dans le HTML/JS capture"
+      },
+      "scatter_id": {
+        "value": null,
+        "status": "not_found",
+        "reason": "info.scatter_id -- server-only"
+      }
+    },
+    "coinflip": {
+      "sides": {
+        "value": [
+          "heads",
+          "tails"
+        ],
+        "status": "found_in_client",
+        "line": null,
+        "note": "deux issues nommees en dur (heads/tails), choix binaire"
+      },
+      "payout_multiplier": {
+        "value": null,
+        "status": "not_found",
+        "reason": "info.coinflip_multiplier recupere via /api/games/info -- variable payoutMult initialisee a 0 puis ecrasee par la reponse serveur, jamais de valeur litterale"
+      },
+      "win_probability": {
+        "value": null,
+        "status": "not_found",
+        "reason": "aucune probabilite n'est ecrite dans le client. Le mecanisme (pile/face, un seul choix) suggere une piece equilibree mais ce n'est pas une valeur extraite -- affirmer p=0.5 serait une supposition, pas une lecture du fichier"
+      }
+    },
+    "wheel": {
+      "bet_categories": {
+        "value": [
+          1,
+          3,
+          5,
+          10,
+          20
+        ],
+        "status": "found_in_client",
+        "line": 4132,
+        "note": "cles de l'objet COLORS/TEXT utilise pour l'affichage"
+      },
+      "segment_layout": {
+        "value": null,
+        "status": "not_found",
+        "reason": "st.layout = info.wheel.layout -- disposition des segments, server-only"
+      },
+      "payouts_per_category": {
+        "value": null,
+        "status": "not_found",
+        "reason": "st.payouts = info.wheel.payouts -- server-only"
+      }
+    },
+    "rock_paper_scissors": {
+      "choices": {
+        "value": [
+          "rock",
+          "paper",
+          "scissors"
+        ],
+        "status": "found_in_client",
+        "line": null,
+        "note": "objets GLYPH/NAME en dur"
+      },
+      "tie_rule": {
+        "value": "stake returned on tie",
+        "status": "found_in_client",
+        "line": 4698,
+        "note": "texte client: \"a tie gives your stake back\""
+      },
+      "payout_multiplier": {
+        "value": null,
+        "status": "not_found",
+        "reason": "info.rps_multiplier -- server-only, initialise a 0 dans le client"
+      },
+      "pvp_pot_formula": {
+        "value": "stake * 2",
+        "status": "found_in_client",
+        "line": 4732,
+        "note": "pot PvP = mise du joueur * 2 (les deux joueurs misent la meme somme)"
+      },
+      "pvp_rake_pct": {
+        "value": null,
+        "status": "not_found",
+        "reason": "info.rake_pct -- l'existence d'un rake PvP est confirmee par le texte client (\"less a X% rake\") mais la valeur n'est jamais litterale"
+      }
+    },
+    "crash": {
+      "animation_defaults": {
+        "value": {
+          "growth": 0.07,
+          "max": 1000
+        },
+        "status": "found_in_client",
+        "line": 4355,
+        "note": "st.growth/st.max sont des parametres de COURBE D'ANIMATION cote client (mult = exp(growth*elapsed)), pas une distribution de probabilite. Ecrases par data.growth / d.state.growth des la premiere reponse serveur. Ne permettent PAS de deduire la probabilite de crash ni le house edge."
+      },
+      "crash_point_distribution": {
+        "value": null,
+        "status": "not_found",
+        "reason": "le point de crash est tire par le serveur (/api/crash/start, /api/crash/state) ; aucune distribution ni aucun house edge n'est ecrit dans le client"
+      }
+    }
+  },
+  "server_only_surface": {
+    "plinko": {
+      "endpoints": [
+        "/api/games/info",
+        "/api/plinko"
+      ],
+      "fields": [
+        "balance",
+        "bet_min",
+        "casino_enabled",
+        "logged_in",
+        "plinko_tables"
+      ]
+    },
+    "slots": {
+      "endpoints": [
+        "/api/games/info",
+        "/api/slots/spin",
+        "/api/slots/state"
+      ],
+      "fields": [
+        "awarded",
+        "balance",
+        "bet_min",
+        "casino_enabled",
+        "cells",
+        "error",
+        "feature",
+        "feature_done",
+        "feature_win",
+        "free",
+        "free_spins",
+        "fs_award",
+        "fs_mult",
+        "logged_in",
+        "multiplier",
+        "payout",
+        "pays",
+        "scatter_id",
+        "scatter_pays",
+        "scatters",
+        "slots",
+        "stake",
+        "state",
+        "symbols",
+        "syms",
+        "weight",
+        "wins"
+      ]
+    },
+    "blackjack": {
+      "endpoints": [
+        "/api/blackjack/action",
+        "/api/blackjack/start",
+        "/api/blackjack/state",
+        "/api/games/info"
+      ],
+      "fields": [
+        "active",
+        "bet_min",
+        "can_double",
+        "can_split",
+        "dealer",
+        "done",
+        "game",
+        "hands",
+        "logged_in"
+      ]
+    },
+    "mines": {
+      "endpoints": [
+        "/api/games/info",
+        "/api/mines/cashout",
+        "/api/mines/pick",
+        "/api/mines/start",
+        "/api/mines/state"
+      ],
+      "fields": [
+        "balance",
+        "bet",
+        "bet_min",
+        "casino_enabled",
+        "cleared",
+        "error",
+        "game",
+        "gems_left",
+        "logged_in",
+        "mines",
+        "mines_at",
+        "multiplier",
+        "next_multiplier",
+        "payout",
+        "picked",
+        "picks",
+        "safe",
+        "safe_pct"
+      ]
+    },
+    "dragon_tower": {
+      "endpoints": [
+        "/api/dragon/cashout",
+        "/api/dragon/pick",
+        "/api/dragon/start",
+        "/api/dragon/state",
+        "/api/games/info"
+      ],
+      "fields": [
+        "balance",
+        "bet",
+        "bet_min",
+        "casino_enabled",
+        "cleared",
+        "difficulties",
+        "difficulty",
+        "dragon",
+        "eggs",
+        "eggs_at",
+        "error",
+        "game",
+        "level",
+        "logged_in",
+        "multiplier",
+        "multipliers",
+        "next_multiplier",
+        "payout",
+        "picked",
+        "rows",
+        "safe",
+        "safe_pct",
+        "tiles"
+      ]
+    },
+    "cases": {
+      "endpoints": [
+        "/api/cases",
+        "/api/games/info"
+      ],
+      "fields": [
+        "balance",
+        "bet_min",
+        "cases",
+        "casino_enabled",
+        "chances",
+        "colours",
+        "difficulties",
+        "error",
+        "logged_in",
+        "multiplier",
+        "multipliers",
+        "payout",
+        "rtp",
+        "tier"
+      ]
+    },
+    "keno": {
+      "endpoints": [
+        "/api/games/info",
+        "/api/keno"
+      ],
+      "fields": [
+        "balance",
+        "bet_min",
+        "casino_enabled",
+        "chances",
+        "difficulties",
+        "draw",
+        "error",
+        "hits",
+        "keno",
+        "logged_in",
+        "max_picks",
+        "multiplier",
+        "multipliers",
+        "payout",
+        "picks",
+        "rtp"
+      ]
+    },
+    "coinflip": {
+      "endpoints": [
+        "/api/coinflip",
+        "/api/games/info"
+      ],
+      "fields": [
+        "balance",
+        "bet_min",
+        "casino_enabled",
+        "coinflip_multiplier",
+        "error",
+        "logged_in",
+        "payout",
+        "result",
+        "won"
+      ]
+    },
+    "wheel": {
+      "endpoints": [
+        "/api/games/info",
+        "/api/wheel"
+      ],
+      "fields": [
+        "balance",
+        "bet_min",
+        "casino_enabled",
+        "error",
+        "index",
+        "logged_in",
+        "payout",
+        "wheel",
+        "won"
+      ]
+    },
+    "crash": {
+      "endpoints": [
+        "/api/crash/cashout",
+        "/api/crash/start",
+        "/api/crash/state",
+        "/api/games/info"
+      ],
+      "fields": [
+        "balance",
+        "bet_min",
+        "cashed",
+        "casino_enabled",
+        "logged_in",
+        "multiplier",
+        "payout",
+        "state"
+      ]
+    },
+    "rock_paper_scissors": {
+      "endpoints": [
+        "/api/games/info",
+        "/api/rps",
+        "/api/rps/state"
+      ],
+      "fields": [
+        "balance",
+        "best_of",
+        "bet_min",
+        "cancelled",
+        "casino_enabled",
+        "enabled",
+        "error",
+        "history",
+        "house",
+        "info",
+        "logged_in",
+        "outcome",
+        "payout",
+        "pick_seconds",
+        "pot",
+        "rake",
+        "rake_pct",
+        "reason",
+        "rps_multiplier",
+        "state",
+        "tables",
+        "title",
+        "you"
+      ]
+    }
+  },
+  "rakeback": {
+    "endpoint": {
+      "value": "/api/rakeback",
+      "status": "found_in_client",
+      "line": 1302
+    },
+    "rate_pct": {
+      "value": null,
+      "status": "not_found",
+      "reason": "d.rate_pct -- utilise dans plusieurs chaines d'aide (\"{d.rate_pct}% of everything you wager...\") mais TOUJOURS comme variable de reponse serveur, jamais une valeur litterale (ex: 5, 10) ecrite dans le HTML/JS"
+    },
+    "cooldown_hours": {
+      "value": null,
+      "status": "not_found",
+      "reason": "d.cooldown_hours -- server-only, jamais litteral"
+    },
+    "min_claim": {
+      "value": null,
+      "status": "not_found",
+      "reason": "d.min_claim -- server-only, jamais litteral"
+    },
+    "tiers": {
+      "value": null,
+      "status": "not_found",
+      "reason": "aucun palier de rakeback (ex: par niveau de badge) n'est ecrit dans le client"
+    }
+  }
+}

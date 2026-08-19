@@ -63,17 +63,17 @@ resource". That was wrong and is superseded: the scarce resource is
 
 ## State of knowledge
 
-*Generated from `facts.jsonl` by `render.py`. 166 facts, 175 records with history. Do not hand-edit this section.*
+*Generated from `facts.jsonl` by `render.py`. 172 facts, 184 records with history. Do not hand-edit this section.*
 
 | status | count |
 |---|---|
-| measured | 28 |
-| derived | 15 |
-| candidate | 5 |
-| assumed | 109 |
+| measured | 33 |
+| derived | 18 |
+| candidate | 6 |
+| assumed | 106 |
 | refuted | 9 |
 
-### measured (28)
+### measured (33)
 
 Observed on the wire by this study.
 
@@ -101,14 +101,19 @@ Observed on the wire by this study.
 | `infra:shoovy.wtf` | fronting | cloudflare devant railway |  | requests.jsonl |
 | `infra:shoovy.wtf` | cold_start | 40 s | 3 | requests.jsonl |
 | `infra:shoovy.wtf` | accepte_client_stdlib | True |  | requests.jsonl |
+| `mechanic:casino` | le_client_porte_t_il_les_probabilites | False | 11 | games_tables.json via extract_games.py |
 | `mechanic:fishing` | contenu_d_une_annonce_de_prise | poids en lb, espece, rarete, valeur en credits, progression X/100 especes, mention 'new personal best' le cas echeant | 2 | payouts.jsonl via payouts.py |
 | `mechanic:fishing` | valeur_d_une_prise | 210.5 credits | 2 | chat.jsonl via analyze_chat.py |
 | `mechanic:fishing` | decay | 0.1 fraction/jour |  | /api/fishing |
 | `mechanic:fishing` | plancher_de_valeur | 0.1 fraction |  | /api/fishing |
 | `mechanic:fishing` | fenetre_fraiche | 24 h |  | /api/fishing |
 | `mechanic:fishing` | especes_au_catalogue | 100 especes | 2 | payouts.jsonl via payouts.py |
+| `mechanic:stocks` | profondeur_amm | 250000 credits |  | market.jsonl |
+| `mechanic:stocks` | frais | 1 % |  | market.jsonl |
+| `mechanic:stocks` | nombre_de_tickers | 5 |  | market.jsonl |
+| `mechanic:stocks` | trading_ouvert | True |  | market.jsonl |
 
-### derived (15)
+### derived (18)
 
 Computed from other facts. Each names what it rests on.
 
@@ -123,14 +128,17 @@ Computed from other facts. Each names what it rests on.
 | `infra:availability` | regle_de_lecture_de_la_disponibilite | retryable: 1-(1-p)^k sur la fenetre; deadline: p^etapes |  | budget.py |
 | `infra:kick` | ce_que_la_voie_kick_ne_resout_pas | la sante du backend du jeu, et les pages web sans equivalent chat |  | chat.jsonl |
 | `infra:kick` | la_boucle_complete_tient_cote_kick | True |  | facts.jsonl + raw/commands.txt |
+| `infra:shoovy.wtf` | valeur_documentaire_des_pages_html | variable selon la page: /commands est de la doc, /games est un moteur de rendu |  | games_tables.json via extract_games.py |
 | `mechanic:business` | tentatives_par_collecte_reussie | 6.3 appels |  | infer.py |
 | `mechanic:business` | rang_d_achat_du_manager | premier achat rentable |  | infer.py |
 | `mechanic:business` | division_du_cout_en_requetes_par_manager | 3 |  | model.py |
 | `mechanic:business` | cadence_de_collecte_optimale | T* = C / r |  | model.py |
+| `mechanic:casino` | verdict_espérance_calculable_hors_ligne | False |  | games_tables.json via extract_games.py |
+| `mechanic:casino` | requete_la_plus_rentable_a_capturer | /api/games/info puis /api/rakeback |  | games_tables.json via extract_games.py |
 | `mechanic:fishing` | valeur_conservee_en_vendant_une_fois_par_jour | 1.0 fraction |  | model.py |
 | `mechanic:fishing` | valeur_conservee_apres_une_semaine | 0.778 fraction |  | model.py |
 
-### candidate (5)
+### candidate (6)
 
 A reading that fits, with the thing that would break it named.
 
@@ -141,14 +149,16 @@ A reading that fits, with the thing that would break it named.
 | `infra:leaderboard` | debit_net_requis_pour_rattraper_en_90_jours | 8809.3 credits/jour |  | infer.py |
 | `mechanic:fishing` | credits_par_livre | 4.37 credits/lb | 2 | payouts.jsonl via payouts.py |
 | `mechanic:fishing` | ce_qui_determine_la_valeur_d_une_prise | le poids, pas la rarete | 2 | payouts.jsonl via payouts.py |
+| `mechanic:stocks` | day_low_day_high_et_volume_sont_des_fenetres_glissantes | True | 2 | market.jsonl |
 
 - `arch.commands_queued_during_outage` breaks if: si le jeu traite le chat en direct sans file, une commande postee pendant une panne est simplement perdue, et le seul gain de la voie Kick est de ne plus subir nous-memes le rate limit
 - `target.rate_needed_30d` breaks if: signale par l'audit: marque derive alors que sa propre methode dit que ses deux hypotheses sont fausses (depart de zero, rang 1 immobile). Un calcul juste sur une premisse fausse reste faux. Sans la pente du rang 1, ce chiffre n'a pas de sens et ne doit pas servir de cible
 - `target.rate_needed_90d` breaks if: signale par l'audit: marque derive alors que sa propre methode dit que ses deux hypotheses sont fausses (depart de zero, rang 1 immobile). Un calcul juste sur une premisse fausse reste faux. Sans la pente du rang 1, ce chiffre n'a pas de sens et ne doit pas servir de cible
 - `fishing.credits_per_pound` breaks if: deux points seulement, et les deux especes different aussi par la rarete; un coefficient par espece ou par rarete produirait la meme coincidence sur un echantillon de cette taille
 - `fishing.value_driver` breaks if: la rarete pourrait piloter la DISTRIBUTION des poids plutot que le prix a la livre, ce qui donnerait la meme observation sur n=2
+- `stocks.window_metrics_are_rolling` breaks if: un reset de journee entre les deux lectures produirait la meme observation; il faut trois lectures rapprochees pour trancher, ce que le collecteur fournira
 
-### assumed (109)
+### assumed (106)
 
 Asserted by the site's own docs, or inherited from July. Never watched happen. Treat as suspect.
 
@@ -252,10 +262,7 @@ Asserted by the site's own docs, or inherited from July. Never watched happen. T
 | `mechanic:raffles` | cotes_proportionnelles_au_nombre_de_tickets | True |  | raw/commands.txt |
 | `mechanic:stocks` | achat_fait_monter_le_prix | True |  | raw/commands.txt |
 | `mechanic:stocks` | fenetre_de_variation_affichee | 1 h |  | raw/commands.txt |
-| `mechanic:stocks` | profondeur_amm | 250000 credits |  | configs de juillet du repo |
-| `mechanic:stocks` | frais | 1 % |  | configs de juillet du repo |
 | `mechanic:stocks` | vente_fait_baisser_le_prix | True |  | raw/commands.txt |
-| `mechanic:stocks` | nombre_de_tickers | 5 |  | configs de juillet du repo |
 | `mechanic:stocks` | cooldown_entre_trades | 8 s |  | configs de juillet du repo |
 | `mechanic:stocks` | seuil_entree | -0.03 fraction |  | configs de juillet du repo |
 | `mechanic:stocks` | seuil_sortie | -0.005 fraction |  | configs de juillet du repo |
@@ -292,6 +299,7 @@ A fact moving to `refuted` invalidates everything below it.
 | `business.manager_priority` | `business.manager_request_divisor`, `business.attempts_per_successful_collect` |
 | `business.manager_request_divisor` | `business.optimal_period`, `business.manager_capacity_multiplier` |
 | `business.optimal_period` | `business.till_stops_when_full` |
+| `casino.ev_undecidable_offline` | `casino.client_has_no_odds` |
 | `event.chest_capture_probability` | `chat.pusher_route_works`, `chest.response_window` |
 | `fishing.casts_per_hour_effective_retry10s` | `fishing.casts_per_hour_nominal`, `infra.call_success_probability`, `fishing.cooldown_seconds` |
 | `fishing.casts_per_hour_effective_retry30s` | `fishing.casts_per_hour_nominal`, `infra.call_success_probability`, `fishing.cooldown_seconds` |
@@ -305,10 +313,12 @@ A fact moving to `refuted` invalidates everything below it.
 | `infra.flow_success_3_steps` | `infra.call_success_probability` |
 | `infra.read_success_does_not_imply_write` | `infra.availability_is_per_operation` |
 | `infra.retry_vs_deadline_split` | `infra.call_success_probability` |
+| `priority.games_info_endpoint` | `casino.ev_undecidable_offline` |
+| `study.html_is_not_uniformly_documentation` | `casino.client_has_no_odds` |
 | `target.rate_needed_30d` | `leaderboard.rank1` |
 | `target.rate_needed_90d` | `leaderboard.rank1` |
 
-*Rendered 2026-08-19 21:48.*
+*Rendered 2026-08-19 21:57.*
 
 <!-- FACTS:END -->
 

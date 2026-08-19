@@ -15,16 +15,28 @@ import client
 HERE = os.path.dirname(os.path.abspath(__file__))
 RAW = os.path.join(HERE, "raw")
 
-# Pages carry the client-side game logic and constants. The public API endpoints
-# carry the live economy. Both are free to read.
+# Ordered by what each target unlocks, not by convenience.
+#
+# The site answers roughly one call in six, so a pass rarely gets far. That makes
+# ordering the whole design: the first slots must go to the requests that settle
+# a question outright.
+#
+# The casino page turned out to carry no odds at all, only a rendering engine, so
+# eleven games' worth of expected value hangs on /api/games/info and
+# /api/rakeback alone. Those lead. Then the series and rules the model needs,
+# then the pages, which are cheap to re-fetch and mostly cosmetic by comparison.
 TARGETS = [
-    "/", "/updates", "/commands", "/fishing", "/stocks", "/casino",
-    "/games", "/crime", "/business", "/shop", "/raffles", "/stats",
+    # settles the casino verdict outright
+    "/api/games/info", "/api/rakeback",
+    # feeds the backtest and the economy model
+    "/api/stocks/history", "/api/stocks", "/api/fishing", "/api/business",
+    "/api/crime", "/api/updates", "/api/leaderboard", "/api/shop",
+    "/api/raffles", "/api/stats", "/api/leaderboards", "/api/casino/lobby",
+    "/api/me", "/api/feed",
+    # pages: client logic, useful but re-fetchable and lower yield
+    "/fishing", "/business", "/crime", "/stocks", "/raffles", "/shop",
+    "/stats", "/casino", "/", "/updates", "/commands",
     "/static/nav.js?v=3", "/static/theme.css?v=3",
-    "/api/me", "/api/fishing", "/api/stocks", "/api/stocks/history",
-    "/api/leaderboard", "/api/leaderboards", "/api/updates", "/api/feed",
-    "/api/games/info", "/api/casino/lobby", "/api/business", "/api/crime",
-    "/api/shop", "/api/raffles", "/api/stats", "/api/rakeback",
 ]
 
 

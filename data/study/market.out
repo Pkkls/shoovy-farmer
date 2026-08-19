@@ -2,3 +2,12 @@ collecteur marche demarre, 1 appel / 30s
 21:43:18  502  (ok=0 fail=1)
 21:44:03  502  (ok=0 fail=2)
 21:45:43  TimeoutError  (ok=0 fail=3)
+21:47:23  TimeoutError  (ok=0 fail=4)
+21:47:53  429  (ok=0 fail=5)
+21:48:23  429  (ok=0 fail=6)
+21:49:01  200  CHAT=56.17 GAMBA=130.67 LOSS=40.2 STRMR=99.05 WINS=60.64  (ok=1 fail=6)
+  history: HTTP 422
+21:52:19  TimeoutError  (ok=1 fail=7)
+21:53:59  TimeoutError  (ok=1 fail=8)
+21:55:10  429  (ok=1 fail=9)
+21:56:25  502  (ok=1 fail=10)
