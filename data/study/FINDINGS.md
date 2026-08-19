@@ -55,8 +55,144 @@ Discriminating test, when the site recovers: check whether a fresh burst
 reproduces a 429 that then clears on a predictable timer. A limiter aimed at
 callers behaves like a timer; a sick backend does not.
 
-Either way the operational conclusion is the same and it is worth keeping:
-**treat request budget as the scarce resource.** See below.
+This paragraph originally concluded "treat request budget as the scarce
+resource". That was wrong and is superseded: the scarce resource is
+**availability**, and pacing buys none of it. See the availability section below.
+
+<!-- FACTS:BEGIN -->
+
+## State of knowledge
+
+*Generated from `facts.jsonl` by `render.py`. 58 facts, 59 records with history. Do not hand-edit this section.*
+
+| status | count |
+|---|---|
+| measured | 20 |
+| derived | 15 |
+| candidate | 1 |
+| assumed | 19 |
+| refuted | 3 |
+
+### measured (20)
+
+Observed on the wire by this study.
+
+| subject | fact | value | n | source |
+|---|---|---|---|---|
+| `command:!fish` | part_des_commandes_observees | 0.84 fraction | 25 | chat.jsonl |
+| `infra:availability` | serie_utilisable_max | 2 requetes | 19 | uptime.py |
+| `infra:availability` | taux_reponses_utilisables | 0.158 fraction | 19 | uptime.py |
+| `infra:kick` | debit_du_chat | 19.2 msg/min | 368 | chat.jsonl |
+| `infra:kick` | chat_lisible_depuis_un_serveur | True |  | pusher_probe.py |
+| `infra:kick` | chatroom_id | 29834074 |  | kick.com/api/v2 |
+| `infra:kick` | follow_minimum_avant_de_poster | 6 min |  | kick.com/api/v2 |
+| `infra:kick` | slow_mode_interval | 1 s |  | kick.com/api/v2 |
+| `infra:leaderboard` | solde_rang_1 | 792841 credits |  | /api/leaderboard |
+| `infra:leaderboard` | solde_rang_2 | 362064 credits |  | /api/leaderboard |
+| `infra:leaderboard` | solde_rang_3 | 211700 credits |  | /api/leaderboard |
+| `infra:leaderboard` | solde_rang_4 | 169956 credits |  | /api/leaderboard |
+| `infra:leaderboard` | solde_rang_5 | 145826 credits |  | /api/leaderboard |
+| `infra:shoovy.wtf` | forme_du_429 | text/plain 12 octets 'rate limited', x-railway-edge, sans Retry-After ni X-RateLimit-* |  | requests.jsonl |
+| `infra:shoovy.wtf` | fronting | cloudflare devant railway |  | requests.jsonl |
+| `infra:shoovy.wtf` | cold_start | 40 s | 3 | requests.jsonl |
+| `infra:shoovy.wtf` | accepte_client_stdlib | True |  | requests.jsonl |
+| `mechanic:fishing` | decay | 0.1 fraction/jour |  | /api/fishing |
+| `mechanic:fishing` | plancher_de_valeur | 0.1 fraction |  | /api/fishing |
+| `mechanic:fishing` | fenetre_fraiche | 24 h |  | /api/fishing |
+
+### derived (15)
+
+Computed from other facts. Each names what it rests on.
+
+| subject | fact | value | n | source |
+|---|---|---|---|---|
+| `event:chest` | probabilite_de_capter_un_chest | indeterminee, gouvernee par la fiabilite d'ecriture Kick |  | infer.py |
+| `infra:availability` | probabilite_qu_un_appel_aboutisse | 0.158 fraction |  | infer.py |
+| `infra:availability` | probabilite_qu_un_enchainement_de_2_appels_aboutisse | 0.025 fraction |  | infer.py |
+| `infra:availability` | probabilite_qu_un_enchainement_de_3_appels_aboutisse | 0.0039 fraction |  | infer.py |
+| `infra:leaderboard` | debit_net_requis_pour_rattraper_en_30_jours | 26428.0 credits/jour |  | infer.py |
+| `infra:leaderboard` | debit_net_requis_pour_rattraper_en_90_jours | 8809.3 credits/jour |  | infer.py |
+| `mechanic:business` | tentatives_par_collecte_reussie | 6.3 appels |  | infer.py |
+| `mechanic:business` | rang_d_achat_du_manager | premier achat rentable |  | infer.py |
+| `mechanic:business` | division_du_cout_en_requetes_par_manager | 3 |  | model.py |
+| `mechanic:business` | cadence_de_collecte_optimale | T* = C / r |  | model.py |
+| `mechanic:fishing` | lancers_par_heure_reels | 3.16 casts/h |  | infer.py |
+| `mechanic:fishing` | lancers_par_heure_theoriques | 20.0 casts/h |  | infer.py |
+| `mechanic:fishing` | valeur_conservee_en_vendant_une_fois_par_jour | 1.0 fraction |  | model.py |
+| `mechanic:fishing` | part_des_appels_consacree_a_la_vente | 0.0021 fraction |  | infer.py |
+| `mechanic:fishing` | valeur_conservee_apres_une_semaine | 0.778 fraction |  | model.py |
+
+### candidate (1)
+
+A reading that fits, with the thing that would break it named.
+
+| subject | fact | value | n | source |
+|---|---|---|---|---|
+| `mechanic:fishing` | cooldown | 180 s | 2 | chat.jsonl |
+
+- `fishing.cooldown_seconds` breaks if: le site etait indisponible pendant toute la fenetre: une commande sans effet ne demarre aucun timer, donc la regularite peut etre l'habitude du joueur et non le cooldown du jeu
+
+### assumed (19)
+
+Asserted by the site's own docs, or inherited from July. Never watched happen. Treat as suspect.
+
+| subject | fact | value | n | source |
+|---|---|---|---|---|
+| `event:chest` | fenetre_de_reponse | 30 s |  | raw/commands.txt |
+| `mechanic:business` | taux_plein_seulement_en_live | True |  | raw/commands.txt |
+| `mechanic:business` | multiplicateur_capacite_manager | 3 |  | raw/commands.txt |
+| `mechanic:business` | reduction_max_odds_de_raid_par_payoff | 0.75 fraction |  | raw/commands.txt |
+| `mechanic:business` | till_sature | True |  | raw/commands.txt |
+| `mechanic:chat_income` | periode_de_gain | 60 s |  | raw/commands.txt |
+| `mechanic:daily` | montant | 200 credits |  | configs de juillet du repo |
+| `mechanic:daily` | periode | 20 h |  | configs de juillet du repo |
+| `mechanic:fishing` | recette_bait | 3 communs |  | raw/commands.txt |
+| `mechanic:fishing` | recette_lure | 5 uncommons |  | raw/commands.txt |
+| `mechanic:fishing` | especes_requises_pour_prestige | 100 especes |  | raw/commands.txt |
+| `mechanic:stocks` | profondeur_amm | 250000 credits |  | configs de juillet du repo |
+| `mechanic:stocks` | frais | 1 % |  | configs de juillet du repo |
+| `mechanic:stocks` | nombre_de_tickers | 5 |  | configs de juillet du repo |
+| `mechanic:stocks` | cooldown_entre_trades | 8 s |  | configs de juillet du repo |
+| `mechanic:stocks` | seuil_entree | -0.03 fraction |  | configs de juillet du repo |
+| `mechanic:stocks` | seuil_sortie | -0.005 fraction |  | configs de juillet du repo |
+| `mechanic:stocks` | fenetre_moyenne_mobile | 20 points |  | configs de juillet du repo |
+| `mechanic:treasure` | fouilles_gratuites | 1 par jour |  | raw/commands.txt |
+
+### refuted (3)
+
+Believed, then disproved. Kept because the reversals are data.
+
+| subject | fact | value | n | source |
+|---|---|---|---|---|
+| `infra:availability` | debit_du_chat_proxy_de_sante_backend | False | 368 | chat.jsonl |
+| `infra:kick` | chat_ferme_aux_serveurs | False |  | pusher_probe.py |
+| `infra:shoovy.wtf` | ip_bannie_par_nos_sondes | False |  | FINDINGS.md |
+
+### What rests on what
+
+A fact moving to `refuted` invalidates everything below it.
+
+| fact | rests on |
+|---|---|
+| `business.attempts_per_successful_collect` | `infra.call_success_probability`, `business.optimal_period` |
+| `business.manager_priority` | `business.manager_request_divisor`, `business.attempts_per_successful_collect` |
+| `business.manager_request_divisor` | `business.optimal_period`, `business.manager_capacity_multiplier` |
+| `business.optimal_period` | `business.till_stops_when_full` |
+| `event.chest_capture_probability` | `chat.pusher_route_works`, `chest.response_window` |
+| `fishing.casts_per_hour_effective` | `fishing.casts_per_hour_nominal`, `infra.call_success_probability` |
+| `fishing.casts_per_hour_nominal` | `fishing.cooldown_seconds` |
+| `fishing.daily_sell_lossless` | `fishing.decay_per_day`, `fishing.fresh_hours` |
+| `fishing.sell_share_of_calls` | `fishing.daily_sell_lossless`, `fishing.casts_per_hour_nominal` |
+| `fishing.weekly_retention` | `fishing.decay_per_day`, `fishing.fresh_hours`, `fishing.floor_fraction` |
+| `infra.call_success_probability` | `infra.availability.v1` |
+| `infra.flow_success_2_steps` | `infra.call_success_probability` |
+| `infra.flow_success_3_steps` | `infra.call_success_probability` |
+| `target.rate_needed_30d` | `leaderboard.rank1` |
+| `target.rate_needed_90d` | `leaderboard.rank1` |
+
+*Rendered 2026-08-19 21:21.*
+
+<!-- FACTS:END -->
 
 ## Infrastructure
 
