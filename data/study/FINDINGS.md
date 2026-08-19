@@ -353,12 +353,21 @@ label did.
 
 This reframes how the expensive half of the study gets done.
 
-Several hundred people play this game in public, and the game announces outcomes
-in chat. Every catch, payout, chest and event is broadcast to anyone holding the
-socket. So a large part of what the study needs — catch values by rarity, chest
-sizes, how often a frenzy or boom fires, cooldowns implied by how fast a given
-player can repeat a command — is **observable without sending a single request
-and without exposing an account**.
+Several hundred people play this game in public. Their **commands** are certainly
+visible: a first 51 s window at ~20 messages/minute already caught `!fish` and
+`!rob` from four different players. If the game also announces **outcomes** in
+chat, then catch values by rarity, chest sizes, frenzy and boom frequency, and
+cooldowns implied by how fast a player repeats a command all become **observable
+without sending a request or exposing an account**.
+
+> **Unverified, and stated too confidently when first written.** In that first
+> window no message from the game itself appeared — only players talking. So the
+> outcome half of this is a hypothesis, not a finding. The likely confound is
+> that the game bot runs on the same Railway deployment that is currently
+> flapping, so its silence may say nothing about whether it normally replies.
+> Re-check once the site is healthy, and if the game turns out never to answer in
+> chat, the firehose shrinks to commands only, which is worth much less: command
+> timings still give cooldowns, but nothing gives payouts.
 
 That matters for three reasons:
 
