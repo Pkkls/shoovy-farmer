@@ -62,3 +62,65 @@ control (backend health). So the lever is: more worker accounts, each running th
 
 The plan is executable only with valid worker sessions in `accounts.json` (a human login). Until
 then this is the plan the farmer will run, not a running farm.
+
+---
+
+# REVISED (live capture via browser): business is the engine, not fishing
+
+Two corrections from a live browser capture (2026-08-20 ~15:55 UTC) overturn the first model.
+
+## Correction 1 — the 429 is a Cloudflare browser-gate, not a backend outage
+At the same instant, from the same IP: the logged-in Chrome browser gets **200** on `/api/stocks`,
+`/api/games/info`, `/api/business`, etc., while curl (browser-shaped and neutral), Go-http-client,
+and the Claw sentinel all get **429**. So the 429 is Cloudflare challenging non-browser clients
+(no `cf_clearance`, non-Chrome TLS fingerprint), not the backend being down and not IP-specific.
+(A few routes — `/api/me`, `/leaderboard`, `/stats`, `/user` — do return 502 even to the browser,
+so there is *some* real origin flakiness on top.) This reverses the iteration-3 reading.
+Consequence: the Go sentinel under-reports availability, and `shoovyclient` needs
+`bogdanfinn/tls-client` Chrome impersonation (as the clawd code already uses) to pass headless.
+
+## Correction 2 — business economics, and they change everything
+`/api/business` gives the full catalog and the params: till caps at **8 h**, **manager ×3**,
+**6 slots**, slot price 25k.
+
+| business | cost | income/h | ROI/h | payback | collect/request (8h till) |
+|---|---|---|---|---|---|
+| Brothel (illegal) | 500k | 10,875 | 2.17 % | 46 h | 87,000 (261,000 w/ mgr) |
+| Counterfeit Press (illegal) | 100k | 2,100 | 2.10 % | 48 h | 16,800 (50,400) |
+| Meth Lab (illegal) | 1M | 20,250 | 2.02 % | 49 h | **162,000 (486,000 w/ mgr)** |
+| Arcade (legal) | 500k | 5,700 | 1.14 % | 88 h | 45,600 (136,800) |
+| Laundromat (legal) | 250k | 2,700 | 1.08 % | 93 h | 21,600 (64,800) |
+
+Illegal ~2 %/h beats legal ~1.1 %/h but carries a `bust_pct` risk (mitigated by the crime-defense
+items: safe/shelter/deterrent). 
+
+## The metric that decides: credits per REQUEST
+Because up-window requests are the scarce resource (Cloudflare-gated, flapping), rank by
+credits/request:
+
+| action | credits/request |
+|---|---|
+| **Meth Lab collect (w/ manager)** | **486,000** (1 req / 8 h) |
+| Meth Lab collect (base) | 162,000 |
+| Laundromat collect (legal, no bust) | 21,600 |
+| **fishing cast** | **210.5** |
+
+Business collect beats fishing by **~1000×** per request. On a gated, flapping backend, this is
+decisive: a handful of collect requests per 8 h yields more than thousands of fishing casts.
+
+## The revised optimal path (two phases)
+1. **Bootstrap (no capital):** fishing + daily. At ~77k cr/day, you can afford a Counterfeit
+   Press (100k, 2.1 %/h) in ~1.3 days, or a Weed Farm (50k) in ~15 h.
+2. **Compound (capital):** reinvest business income, fill all 6 slots, add managers (×3), climb
+   the tier ladder toward Meth Labs. Collect on the 8 h till cadence — a few requests per cycle.
+   Six Meth Labs with managers = **364,500 cr/h**, which clears the 886,890 target in ~2.4 h of
+   running. Rank 1 becomes days-to-capital, not weeks-of-fishing.
+
+Highest-leverage change is no longer "more accounts" but **capital velocity**: get the first
+illegal business as fast as fishing allows, then let compounding + managers run. Accounts still
+help (parallel bootstrap), but the engine is business, and the scarce-request math makes it the
+only thing worth spending up-window requests on besides the daily claim.
+
+## Open, needs a session (POST/authenticated)
+- `!daily` amount (GET is 405, POST-only). Buying/collecting/managers need a session too.
+- `bust_pct` values and the crime-defense economics, to price the illegal-vs-legal risk.
