@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credits · Fishing</title>
+<link rel="stylesheet" href="/static/theme.css?v=3">
+<style>
+  main { max-width: 900px; }
+
+  /* cooldowns first, then the collection summary on its own row under them */
+  .status { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
+  .status .timers { display: flex; flex-direction: column; gap: 6px; }
+  .status .cast { font-size: 15px; color: var(--ink); }
+  .status .cast b { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .status .prog { color: var(--muted); font-size: 12px; }
+
+  section.card { margin-bottom: 16px; }
+  td.amt { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.n { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .empty { color: var(--muted); font-size: 13px; padding: 6px 0; }
+  .hint { margin-top: 10px; }
+
+  /* ---- collection log ---- */
+  .log { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); gap: 10px; }
+  .fish {
+    border-radius: 2px; padding: 12px 10px 10px; text-align: center;
+    background: var(--inset); border: 1px solid var(--line);
+    border-top: 3px solid var(--rc, var(--line-strong));
+  }
+  .fish .em { font-size: 30px; line-height: 1.2; display: block; filter: none; }
+  .fish .nm { display: block; font-size: 13px; font-weight: 600; color: var(--ink); margin-top: 4px; overflow-wrap: anywhere; }
+  .fish .rt { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rc, var(--muted)); margin-top: 2px; }
+  .fish .ct { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .fish .rec { display: block; font-size: 10px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .fish .rec.mine { color: #fbd065; font-weight: 600; }
+  .fish.locked { opacity: 0.6; }
+  .fish.locked .em { filter: grayscale(1) brightness(0.4); }
+  .fish.locked .nm { color: var(--muted); }
+  .fish.mythic:not(.locked) {
+    border-color: #fbd065;
+    box-shadow: 0 0 14px rgba(251, 208, 101, 0.25);
+  }
+
+  /* ---- inline rarity dot ---- */
+  .rtag {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    margin-left: 6px; vertical-align: middle;
+    background: var(--rc, var(--muted));
+  }
+
+  /* ---- expanded stack: the individual fish inside one species row ---- */
+  .stack { background: var(--inset); }
+  .stack > td { padding: 0 10px 8px; }
+  .stack table { width: 100%; border-collapse: collapse; }
+  .stack td { border: 0; padding: 4px 6px; font-size: 12px; }
+  .stack .age { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* ---- freshness line: how much of a fish's fresh value is left ---- */
+  /* it belongs to the row above it, so no rule between the two */
+  tr.rot td { border-top: 0; padding: 0 0 7px; }
+  .stack tr.rot td { padding: 0 6px 5px; }
+  /* short and left-aligned, so it reads as a gauge and not a row divider */
+  .bar { display: block; height: 2px; max-width: 190px; background: var(--line); border-radius: 1px; }
+  .bar i { display: block; height: 100%; border-radius: 1px; background: var(--muted); }
+  .toggle { font-family: var(--mono); font-size: 11px; padding: 2px 7px; margin-right: 6px; }
+
+  /* ---- collapsible "more info" ---- */
+  /* same collapsible as the casino rakeback card: a summary line with the
+     caret parked out on the right edge. <details> holds the open/shut state
+     on its own, so these start shut on every load and the page stays short. */
+  .info-box > summary {
+    display: flex; align-items: center; gap: 10px; margin-top: 10px;
+    cursor: pointer; list-style: none; user-select: none;
+  }
+  .info-box > summary::-webkit-details-marker { display: none; }
+  .info-box > summary::after { content: "▸"; margin-left: auto; color: var(--muted);
+    font-size: 11px; transition: transform 0.15s ease; }
+  .info-box[open] > summary::after { transform: rotate(90deg); }
+  /* the label is a card heading, so it inherits the same uppercase overline
+     as every other h2 on the page — nothing of its own to drift */
+  .info-box > summary h2 { margin-bottom: 0; }
+
+  /* these hints only ever hold the outcome of a buy: empty, the reserved
+     line is just a gap at the bottom of the card */
+  #gear-hint:empty, #stake-hint:empty { display: none; }
+
+  /* ---- fishing gear ---- */
+  .chip { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; border-radius: 2px; padding: 1px 6px; white-space: nowrap; }
+  .chip.fulfilled { color: var(--green-text); background: rgba(50, 164, 103, 0.15); }
+  .chip.locked { color: var(--muted); background: rgba(143, 153, 168, 0.15); }
+  /* stake exclusives you haven't unlocked: visible, but plainly out of reach */
+  #stake-gear tr.locked td { opacity: 0.55; }
+  #stake-card h2 { display: flex; align-items: center; }
+
+  /* ---- prestige ---- */
+  #prestige-card h2 { display: flex; align-items: center; }
+  /* a complete log is the rarest thing on this page — let the card say so */
+  #prestige-card.ready {
+    border-color: #fbd065;
+    box-shadow: 0 0 14px rgba(251, 208, 101, 0.25);
+  }
+  #prestige-card .blurb { font-size: 13px; color: var(--ink); margin-bottom: 10px; }
+  #prestige-card .blurb b { color: #fbd065; }
+</style>
+</head>
+<body>
+  <header>
+    <h1><span>■</span> Fishing</h1>
+    <nav class="right" id="site-nav"></nav>
+  </header>
+  <script src="/static/nav.js?v=3"></script>
+  <script src="/static/sounds.js"></script>
+  <script src="/static/badges.js?v=2"></script>
+
+  <main>
+    <div class="status">
+      <!-- both cooldowns stack together, so the next cast and the next dig
+           read as one block; the collection summary stays off to the side -->
+      <div class="timers">
+        <!-- placeholder until the first /api/fishing load lands — it must not
+             look like finished content, or a slow load reads as a broken page -->
+        <span class="cast" id="cast-status">🎣 Loading…</span>
+        <div id="treasure-status" style="display:none;">
+          <span class="cast" id="treasure-cast">💰 Type <b>!treasure</b> in chat to dig the chest.</span>
+        </div>
+      </div>
+      <span class="prog" id="progress"></span>
+    </div>
+
+    <section class="card" id="prestige-card" style="display:none;">
+      <h2>Prestige</h2>
+      <div class="blurb" id="prestige-blurb"></div>
+      <button class="btn primary" id="prestige-btn" style="display:none;">🎣 Prestige</button>
+      <div class="hint" id="prestige-hint"></div>
+    </section>
+
+    <section class="card" id="net-card" style="display:none;">
+      <h2>Your net</h2>
+      <div class="table-wrap"><table><tbody id="net"></tbody></table></div>
+      <div class="empty" id="net-empty" style="display:none;">Nothing in the net — everything's sold. Go fish!</div>
+      <!-- the bulk sell sits with the other sell controls, right under the
+           table's "Sell all" row; everything explanatory is behind the fold -->
+      <div style="display:flex; gap:8px; margin-top:10px; align-items:center; flex-wrap:wrap;">
+        <span style="color:var(--muted); font-size:12px;">Bulk:</span>
+        <select id="bulk-sel" style="font-size:13px;">
+          <option value="below:common">all commons</option>
+          <option value="below:uncommon">uncommon &amp; below</option>
+          <option value="below:rare">rare &amp; below</option>
+          <option value="below:epic">epic &amp; below</option>
+        </select>
+        <button class="btn" id="bulk-btn" style="font-size:12px; padding:5px 12px;">Sell tier</button>
+      </div>
+      <div class="hint" id="net-hint"></div>
+      <details class="info-box">
+        <summary><h2>More info</h2></summary>
+        <div class="hint" id="decay-note" style="display:none;"></div>
+        <div class="hint">A stack holds different fish — hit <b>▸</b> next to a species to open it up and sell one fish at a time,
+          so a fresh trophy can be cashed in while the decayed ones stay in the net (or the other way round).</div>
+        <div class="hint">Or sell from chat: <b>!fishsell all</b> · <b>!fishsell common</b> (that tier only) · <b>!fishsell rare-</b> (rare &amp; below)
+          · add a count for part of a stack: <b>!fishsell bass 1</b> (your best one) · <b>!fishsell bass 2 worst</b> (the two cheapest).</div>
+      </details>
+    </section>
+
+    <section class="card" id="galley-card" style="display:none;">
+      <h2>Galley — cook your catch</h2>
+      <div class="table-wrap"><table><tbody id="galley"></tbody></table></div>
+      <div class="hint" id="galley-hint">Cook a pile of spare catches into gear — or type <b>!cook</b> in chat.
+        The cheapest fish of the required tier go in the pot first, so your trophies and record fish stay safe.</div>
+    </section>
+
+    <section class="card" id="gear-card" style="display:none;">
+      <h2>Fishing gear</h2>
+      <div class="table-wrap"><table><tbody id="gear"></tbody></table></div>
+      <!-- gear-hint is where a buy's outcome lands, so the standing
+           explanation gets its own collapsible and survives a purchase -->
+      <div class="hint" id="gear-hint"></div>
+      <details class="info-box">
+        <summary><h2>More info</h2></summary>
+        <div class="hint">Rods, the net, the freezer and the boat are one-time buys: rods permanently shorten the
+          !fish cooldown (best one counts), the net gives every cast a shot at a second fish,
+          the freezer keeps unsold fish fresh longer before they start to decay, and the Puffin 3
+          takes you offshore — fish run bigger and trash gets tossed back (unless it'd be a new
+          species for your collection log, so prestiging hands your boots back until each one is
+          logged again).
+          Bait and lures are consumed by your next cast (a lure is used before bait).
+          The golden hook gives your next catch the best of five weight rolls, and stacks with
+          bait or a lure, which move the rarity itself.</div>
+      </details>
+    </section>
+
+    <section class="card" id="stake-card" style="display:none;">
+      <h2>Stake exclusives</h2>
+      <div class="table-wrap"><table><tbody id="stake-gear"></tbody></table></div>
+      <div class="hint" id="stake-hint"></div>
+    </section>
+
+    <section class="card">
+      <h2>Collection log</h2>
+      <div class="log" id="log"></div>
+      <div class="hint" id="log-hint"></div>
+    </section>
+
+    <section class="card" id="lb-card" style="display:none;">
+      <h2>Top anglers</h2>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th style="text-align:right;">#</th><th>Angler</th>
+          <th style="text-align:right;">Species</th>
+          <th style="text-align:right;">Catches</th>
+          <th style="text-align:right;" title="channel records held">🏆</th>
+          <th style="text-align:right;">Lifetime value</th>
+        </tr></thead>
+        <tbody id="lb"></tbody>
+      </table></div>
+      <div class="hint">Ranked by prestiges, then species collected this run, then lifetime catch value.
+        🏆 counts channel-record catches held.</div>
+    </section>
+  </main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => Math.floor(n).toLocaleString();
+const lb = (w) => w.toLocaleString(undefined, w < 1
+  ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+  : { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+const RARITY_COLORS = {
+  common: "#8f99a8", uncommon: "#32a467", rare: "#4c90f0",
+  epic: "#bd6bbd", legendary: "#ec9a3c", mythic: "#fbd065",
+};
+
+// small dot next to a fish name, colored by its rarity tier — the tier name
+// itself only shows on hover (and to screen readers)
+function rarityTag(rarity) {
+  const tag = document.createElement("span");
+  tag.className = "rtag";
+  tag.title = rarity;
+  tag.setAttribute("role", "img");
+  tag.setAttribute("aria-label", rarity);
+  tag.style.setProperty("--rc", RARITY_COLORS[rarity] || "#8f99a8");
+  return tag;
+}
+
+let remaining = 0, loggedIn = false, fishingOff = false, decayOn = false;
+let frenzyRemaining = 0;
+let treasureRemaining = 0, treasureOn = false;
+let cooldownTimer = null, treasureTimer = null, loadedOnce = false;
+let retryTimer = null;
+
+function tickCooldown() {
+  clearTimeout(cooldownTimer);
+  const el = $("cast-status");
+  if (!loggedIn || fishingOff) return;
+  // a frenzy zeroes the cooldown for everyone — say so, otherwise the page
+  // just reads "Ready!" and nobody knows to keep casting
+  if (frenzyRemaining > 0) {
+    el.innerHTML = "🎣🔥 <b>FISHING FRENZY</b> — no cooldown for <b>" +
+      frenzyRemaining + "s</b>! Spam <b>!fish</b> in chat!";
+    frenzyRemaining--;
+    cooldownTimer = setTimeout(tickCooldown, 1000);
+    return;
+  }
+  if (remaining <= 0) {
+    el.innerHTML = "🎣 Ready! Type <b>!fish</b> in chat to cast.";
+    return;
+  }
+  const m = Math.floor(remaining / 60), s = remaining % 60;
+  el.innerHTML = "⏳ Next cast in <b>" + (m ? m + "m " : "") + s + "s</b>";
+  remaining--;
+  cooldownTimer = setTimeout(tickCooldown, 1000);
+}
+
+function tickTreasure() {
+  clearTimeout(treasureTimer);
+  const el = $("treasure-cast");
+  // the chest outlives fishing being switched off — it pays out credits,
+  // criminal gear and business perks too, so only its own toggle hides it
+  if (!loggedIn || !treasureOn) return;
+  if (treasureRemaining <= 0) {
+    el.innerHTML = "💰 Ready! Type <b>!treasure</b> in chat to dig the chest.";
+    return;
+  }
+  const h = Math.floor(treasureRemaining / 3600);
+  const m = Math.floor((treasureRemaining % 3600) / 60);
+  const s = treasureRemaining % 60;
+  const t = (h ? h + "h " : "") + (h || m ? m + "m " : "") + s + "s";
+  el.innerHTML = "⏳ Next <b>!treasure</b> dig in <b>" + t + "</b>";
+  treasureRemaining--;
+  treasureTimer = setTimeout(tickTreasure, 1000);
+}
+
+async function sellReq(body) {
+  const r = await fetch("/api/fishing/sell", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const d = await r.json();
+  const hint = $("net-hint");
+  hint.className = "hint " + (r.ok ? "ok" : "err");
+  hint.textContent = r.ok ? d.message : d.error;
+  if (r.ok && window.sfx) sfx.cash();
+  if (r.ok && d.balance !== undefined)
+    $("balance").textContent = d.balance.toLocaleString() + " credits";
+  await load();
+}
+const sell = (species) => sellReq({ species });
+const sellCatch = (catch_id) => sellReq({ catch_id });
+
+// which species rows are expanded into their individual fish — kept across
+// the 20s refresh so a poll doesn't collapse a stack you're picking through
+const openStacks = new Set();
+
+// this user's freshness window in seconds (their freezer included), so the
+// age labels below know when a fish actually starts to rot
+let freshWindowSec = 0;
+// a freezer stretches the window to 72h by default, and "2d old" hides how
+// much of it is left — so stay in hours through the whole window (and at
+// least through 72h) before rolling over to days
+const HOURS_LABEL_MIN = 72 * 3600;
+
+const ageLabel = (s) =>
+  s < 3600 ? Math.max(1, Math.round(s / 60)) + "m old"
+  : s < Math.max(HOURS_LABEL_MIN, freshWindowSec) ? Math.round(s / 3600) + "h old"
+  : Math.round(s / 86400) + "d old";
+
+// how much of the freshness window this fish has left, for the age tooltip
+const decayTitle = (s) => {
+  if (!decayOn || !freshWindowSec) return "";
+  const left = freshWindowSec - s;
+  if (left <= 0) return "past its freshness window — losing value every day";
+  return "fresh for another " +
+    (left < 3600 ? Math.max(1, Math.round(left / 60)) + "m"
+                 : Math.round(left / 3600) + "h");
+};
+
+// a hairline under a fish for how much of its fresh value is left — full
+// means still fresh, a stub means it's rotted down to the floor. Sits in
+// its own row so it lines up under the fish it belongs to.
+function freshnessRow(value, fresh, cols) {
+  const left = Math.max(0, Math.min(1, value / fresh));
+  const tr = document.createElement("tr");
+  tr.className = "rot";
+  const cell = document.createElement("td");
+  cell.colSpan = cols;
+  const bar = document.createElement("span");
+  bar.className = "bar";
+  bar.title = left >= 0.999
+    ? "still fresh — worth its full value"
+    : `decayed: worth ${Math.round(left * 100)}% of its fresh value`;
+  const fill = document.createElement("i");
+  fill.style.width = (left * 100).toFixed(1) + "%";
+  bar.appendChild(fill);
+  cell.appendChild(bar);
+  tr.appendChild(cell);
+  return tr;
+}
+
+// one expanded stack: every unsold fish of that species, priciest first,
+// each with its own Sell button — so a fresh trophy can be cashed in
+// without dumping the decayed ones stacked under it
+async function renderStack(key, cell) {
+  cell.textContent = "Loading…";
+  let d;
+  try {
+    const r = await fetch("/api/fishing/net/" + encodeURIComponent(key));
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    d = await r.json();
+  } catch (e) {
+    cell.textContent = "Couldn't load this stack — try again.";
+    return;
+  }
+  cell.textContent = "";
+  const table = document.createElement("table");
+  for (const f of d.catches) {
+    const tr = document.createElement("tr");
+    const w = document.createElement("td");
+    w.textContent = `${d.emoji} ${lb(f.weight)} lb`;
+    const age = document.createElement("td");
+    age.className = "age";
+    age.textContent = ageLabel(f.age);
+    const when = decayTitle(f.age);
+    if (when) age.title = when;
+    const val = document.createElement("td");
+    val.className = "amt";
+    val.textContent = fmt(f.value);
+    if (f.fresh > f.value) {
+      val.textContent += " 🦠";
+      val.title = `worth ${fmt(f.fresh)} fresh — this one is decaying`;
+      val.style.color = "var(--muted)";
+    }
+    const act = document.createElement("td");
+    act.style.cssText = "text-align:right;white-space:nowrap;";
+    const b = document.createElement("button");
+    b.className = "btn";
+    b.style.cssText = "font-size:11px;padding:3px 9px;";
+    b.textContent = "Sell";
+    b.disabled = fishingOff;
+    b.onclick = () => sellCatch(f.id);
+    act.appendChild(b);
+    tr.append(w, age, val, act);
+    table.appendChild(tr);
+    if (decayOn && f.fresh > 0) table.appendChild(freshnessRow(f.value, f.fresh, 4));
+  }
+  cell.appendChild(table);
+  if (d.unsold > d.catches.length) {
+    const more = document.createElement("div");
+    more.className = "empty";
+    more.textContent = `Showing the ${d.catches.length} most valuable of ${d.unsold} — sell some to see the rest.`;
+    cell.appendChild(more);
+  }
+}
+document.getElementById("bulk-btn").onclick = () => sell(document.getElementById("bulk-sel").value);
+
+/* The prestige card: the offer while the log is short of complete, the
+   button once it's full, and the badge's standing either way. */
+function renderPrestige(d) {
+  const card = $("prestige-card");
+  const btn = $("prestige-btn");
+  const level = d.prestige || 0;
+  if (!loggedIn || (!level && !d.can_prestige)) { card.style.display = "none"; return; }
+  card.style.display = "";
+  card.className = "card" + (d.can_prestige ? " ready" : "");
+  const h2 = card.querySelector("h2");
+  h2.textContent = "Prestige";
+  if (level && window.fishBadge) h2.appendChild(fishBadge("lg", level));
+
+  const blurb = $("prestige-blurb");
+  blurb.innerHTML = "";
+  const line = document.createElement("div");
+  if (d.can_prestige) {
+    line.innerHTML = `<b>All ${d.total_species} species are in the log.</b> Hand it in and the hunt starts over: ` +
+      "the collection log resets to empty, everything still in your net is sold at its current value, " +
+      "and the 🎣 <b>Master Angler</b> badge goes next to your name on every leaderboard. " +
+      "Your gear, credits, channel records and lifetime catch totals all stay exactly where they are.";
+  } else {
+    line.innerHTML = `You've prestiged <b>${level}×</b> — the badge is yours for good. ` +
+      `Fill the log again (<b>${d.unique} / ${d.total_species}</b> species this run) to stack another one on it.`;
+  }
+  blurb.appendChild(line);
+
+  btn.style.display = d.can_prestige ? "" : "none";
+  btn.disabled = fishingOff;
+  btn.textContent = level ? `🎣 Prestige ${level + 1}` : "🎣 Prestige";
+  btn.onclick = prestige;
+}
+
+async function prestige() {
+  const btn = $("prestige-btn");
+  const hint = $("prestige-hint");
+  if (!confirm("Prestige? Your collection log resets to empty and everything left "
+             + "in your net is sold off. Gear, credits, records and the badge all stay."))
+    return;
+  btn.disabled = true;
+  let r, res;
+  try {
+    r = await fetch("/api/fishing/prestige", { method: "POST" });
+    res = await r.json();
+  } catch (e) {
+    hint.className = "hint err";
+    hint.textContent = "Couldn't reach the server — nothing changed. Try again.";
+    btn.disabled = false;
+    return;
+  }
+  if (r.ok && window.sfx) sfx.cash();
+  if (r.ok && res.balance !== undefined)
+    $("balance").textContent = res.balance.toLocaleString() + " credits";
+  // the reload repaints this card (and wipes the hint with it), so the
+  // outcome message goes up last
+  await load();
+  hint.className = "hint " + (r.ok ? "ok" : "err");
+  hint.textContent = r.ok ? res.message : res.error;
+}
+
+async function cook(recipe) {
+  const r = await fetch("/api/fishing/cook", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ recipe }),
+  });
+  const d = await r.json();
+  const hint = $("galley-hint");
+  hint.className = "hint " + (r.ok ? "ok" : "err");
+  hint.textContent = r.ok ? d.message : d.error;
+  if (r.ok && window.sfx) sfx.cash();
+  await load();
+}
+
+async function load() {
+  // A single failed or hung request must never strand the page on its
+  // static skeleton: time out slow fetches, and on any error show a retry
+  // notice (first load) or keep the last good render (refreshes) — the
+  // 20s poll below tries again either way.
+  let d;
+  clearTimeout(retryTimer);
+  try {
+    const ctl = new AbortController();
+    const timeout = setTimeout(() => ctl.abort(), 15000);
+    const r = await fetch("/api/fishing", { signal: ctl.signal });
+    clearTimeout(timeout);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    d = await r.json();
+  } catch (e) {
+    if (!loadedOnce) {
+      $("cast-status").innerHTML = "⚠️ Couldn't load fishing data — retrying…";
+      // before anything has rendered a blank page is all the user sees, so
+      // retry quickly instead of waiting out the 20s poll
+      retryTimer = setTimeout(load, 5000);
+    }
+    return;
+  }
+  loadedOnce = true;
+  loggedIn = d.logged_in;
+  fishingOff = d.enabled === false;
+  decayOn = !!d.decay;
+  // the freezer owner's stretched window when they have one, else the plain one
+  freshWindowSec = d.decay
+    ? Math.round((d.decay.my_fresh_hours || d.decay.fresh_hours) * 3600) : 0;
+  if (fishingOff) {
+    $("cast-status").innerHTML = "🚫 Fishing is currently disabled.";
+  } else if (!loggedIn) {
+    $("cast-status").innerHTML =
+      '<a href="/auth/login" style="color:var(--blue-text);">Log in with Kick</a> to fish and track your collection.';
+  } else {
+    remaining = d.remaining;
+    frenzyRemaining = d.frenzy_remaining || 0;
+    tickCooldown();
+  }
+
+  // ---- treasure cooldown ----
+  treasureOn = loggedIn && !!d.treasure_enabled;
+  $("treasure-status").style.display = treasureOn ? "" : "none";
+  if (treasureOn) {
+    treasureRemaining = d.treasure_remaining;
+    tickTreasure();
+  }
+
+  $("bulk-btn").disabled = fishingOff;
+  renderPrestige(d);
+
+  const gear = d.gear || {};
+  $("progress").textContent =
+    `Collection: ${d.unique} / ${d.total_species} species` +
+    (d.prestige ? ` · prestige ${d.prestige}` : "") +
+    ` · ${fmt(d.lifetime_catches ?? d.total_catches)} total catches` +
+    (d.net_worth ? ` · net worth ${fmt(d.net_worth)} credits` : "") +
+    (gear.cooldown_reduction_pct ? ` · rod: -${gear.cooldown_reduction_pct}% cooldown` : "") +
+    (gear.net ? " · 🕸️ net" : "") +
+    (gear.freezer ? " · 🧊 freezer" : "") +
+    (gear.boat ? " · 🛥️ Puffin 3" : "") +
+    (gear.yacht ? " · 🛳️ Stake Yacht" : "") +
+    (gear.lures ? ` · ${gear.lures} lure${gear.lures === 1 ? "" : "s"}` : "") +
+    (gear.bait ? ` · ${gear.bait} bait` : "") +
+    (gear.goldhook ? ` · ${gear.goldhook} 🧲 golden hook${gear.goldhook === 1 ? "" : "s"}` : "");
+
+  // ---- net (unsold, sellable) ----
+  // anything unsold, even a species the log has locked again since (a fish
+  // that outlived the prestige that reset its log entry) — it's still in
+  // the net and still sellable, so it has to be reachable
+  const inNet = d.species.filter((s) => s.unsold > 0);
+  // stacks that emptied out (or dropped to a single fish) can't stay open
+  for (const key of [...openStacks])
+    if (!inNet.some((s) => s.key === key && s.unsold > 1)) openStacks.delete(key);
+  $("net-card").style.display =
+    loggedIn && (d.lifetime_catches ?? d.total_catches) ? "" : "none";
+  const net = $("net");
+  net.innerHTML = "";
+  $("net-empty").style.display = inNet.length ? "none" : "block";
+  for (const s of inNet) {
+    const tr = document.createElement("tr");
+    const nm = document.createElement("td");
+    nm.append(`${s.emoji} ${s.name} `, rarityTag(s.rarity));
+    const n = document.createElement("td");
+    n.className = "n";
+    n.textContent = s.unsold + "×";
+    // a stack of the same species still holds different fish — different
+    // weights, each decaying from its own catch time — so let it open up
+    let toggle = null;
+    if (s.unsold > 1) {
+      toggle = document.createElement("button");
+      toggle.className = "btn toggle";
+      toggle.textContent = openStacks.has(s.key) ? "▾" : "▸";
+      toggle.title = "pick out individual fish to sell";
+      nm.prepend(toggle);
+    }
+    const val = document.createElement("td");
+    val.className = "amt";
+    val.textContent = fmt(s.unsold_value);
+    if (s.unsold_fresh > s.unsold_value) {
+      val.textContent += " 🦠";
+      val.title = `worth ${fmt(s.unsold_fresh)} fresh — these are decaying, sell them!`;
+      val.style.color = "var(--muted)";
+    }
+    const act = document.createElement("td");
+    act.style.cssText = "text-align:right;white-space:nowrap;";
+    const b = document.createElement("button");
+    b.className = "btn";
+    b.style.cssText = "font-size:12px;padding:4px 10px;";
+    b.textContent = s.unsold > 1 ? "Sell all" : "Sell";
+    b.disabled = fishingOff;
+    b.onclick = () => sell(s.key);
+    act.appendChild(b);
+    tr.append(nm, n, val, act);
+    net.appendChild(tr);
+    // a lone fish is its own stack — there's no toggle to open, so its
+    // freshness line hangs off the species row instead of inside the stack
+    if (decayOn && s.unsold === 1 && s.unsold_fresh > 0)
+      net.appendChild(freshnessRow(s.unsold_value, s.unsold_fresh, 4));
+    if (toggle) {
+      const stack = document.createElement("tr");
+      stack.className = "stack";
+      const cell = document.createElement("td");
+      cell.colSpan = 4;
+      stack.appendChild(cell);
+      stack.style.display = openStacks.has(s.key) ? "" : "none";
+      net.appendChild(stack);
+      if (openStacks.has(s.key)) renderStack(s.key, cell);
+      toggle.onclick = () => {
+        const open = !openStacks.has(s.key);
+        if (open) openStacks.add(s.key); else openStacks.delete(s.key);
+        toggle.textContent = open ? "▾" : "▸";
+        stack.style.display = open ? "" : "none";
+        if (open) renderStack(s.key, cell);
+      };
+    }
+  }
+  if (inNet.length > 1) {
+    const tr = document.createElement("tr");
+    const nm = document.createElement("td");
+    nm.textContent = "Everything";
+    nm.style.color = "var(--muted)";
+    const n = document.createElement("td");
+    const val = document.createElement("td");
+    val.className = "amt";
+    val.textContent = fmt(d.net_worth);
+    const act = document.createElement("td");
+    act.style.cssText = "text-align:right;white-space:nowrap;";
+    const b = document.createElement("button");
+    b.className = "btn success";
+    b.style.cssText = "font-size:12px;padding:4px 10px;";
+    b.textContent = "Sell all";
+    b.disabled = fishingOff;
+    b.onclick = () => sell("all");
+    act.appendChild(b);
+    tr.append(nm, n, val, act);
+    net.appendChild(tr);
+  }
+
+  // ---- decay note ----
+  const note = $("decay-note");
+  if (d.decay) {
+    note.style.display = "";
+    note.textContent = `🦠 Fish decay: fresh for ${d.decay.fresh_hours}h, then they lose ` +
+      `${d.decay.pct_per_day}% of their value per day (down to ${d.decay.floor_pct}%). ` +
+      `Sell before they rot!` +
+      (d.decay.my_fresh_hours
+        ? ` 🧊 Your freezer keeps catches fresh for ${d.decay.my_fresh_hours}h.`
+        : "");
+  } else {
+    note.style.display = "none";
+  }
+
+  // ---- fishing gear ----
+  renderGear(gear);
+
+  // ---- galley (cooking) ----
+  renderGalley(d.cooking);
+
+  // ---- collection log ----
+  const log = $("log");
+  log.innerHTML = "";
+  d.species.forEach((s, i) => {
+    const card = document.createElement("div");
+    const color = RARITY_COLORS[s.rarity] || "#8f99a8";
+    card.className = "fish " + s.rarity + (s.hidden ? " locked" : "");
+    card.style.setProperty("--rc", color);
+    const em = document.createElement("span");
+    em.className = "em";
+    em.textContent = s.hidden ? "🐟" : s.emoji;
+    const nm = document.createElement("span");
+    nm.className = "nm";
+    nm.textContent = s.hidden ? "???" : s.name;
+    const rt = document.createElement("span");
+    rt.className = "rt";
+    rt.textContent = s.rarity;
+    const ct = document.createElement("span");
+    ct.className = "ct";
+    ct.textContent = s.hidden ? "not caught yet"
+      : `caught ${s.caught}× · best ${lb(s.best)} lb`;
+    card.append(em, nm, rt, ct);
+    if (!s.hidden) {
+      card.title = `average-weight catch sells for ${fmt(s.value)}`;
+      if (s.record) {
+        const rec = document.createElement("span");
+        rec.className = "rec" + (s.record.mine ? " mine" : "");
+        rec.textContent = `🏆 ${lb(s.record.weight)} lb · ${s.record.username}`;
+        card.appendChild(rec);
+      }
+    }
+    log.appendChild(card);
+  });
+
+  // ---- top anglers ----
+  const rows = d.leaderboard || [];
+  $("lb-card").style.display = rows.length ? "" : "none";
+  const tbody = $("lb");
+  tbody.innerHTML = "";
+  rows.forEach((a, i) => {
+    const tr = document.createElement("tr");
+    if (a.me) tr.style.background = "var(--inset)";
+    const cells = [
+      ["#" + (i + 1), "n"],
+      [a.username + (a.me ? " (you)" : ""), ""],
+      [`${a.unique} / ${d.total_species}`, "n"],
+      [fmt(a.catches), "n"],
+      [a.records ? String(a.records) : "—", "n"],
+      [fmt(a.value), "amt"],
+    ];
+    cells.forEach(([text, cls], col) => {
+      const td = document.createElement("td");
+      td.className = cls;
+      td.textContent = text;
+      // a stale badges.js costs a badge, never the board (see stats.html)
+      if (col === 1 && a.stake && window.stakeBadge) td.appendChild(stakeBadge());
+      if (col === 1 && a.prestige && window.fishBadge)
+        td.appendChild(fishBadge("", a.prestige));
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  $("log-hint").textContent = d.unique >= d.total_species
+    ? "🏆 Collection complete — you've caught them all! Prestige it for the 🎣 badge and a fresh log."
+    : "Locked entries show only their rarity — catch one to reveal it.";
+}
+
+function renderGalley(cooking) {
+  const card = $("galley-card");
+  if (!cooking || !cooking.enabled || !loggedIn) { card.style.display = "none"; return; }
+  card.style.display = "";
+  const body = $("galley");
+  body.innerHTML = "";
+  for (const rc of cooking.recipes) {
+    const tr = document.createElement("tr");
+    const what = document.createElement("td");
+    const nm = document.createElement("b");
+    nm.textContent = `${rc.emoji} ${rc.name}`;
+    const desc = document.createElement("span");
+    desc.style.cssText = "display:block;color:var(--muted);font-size:12px;";
+    desc.textContent = `${rc.count} ${rc.tier} catches → 1 ${rc.name}`;
+    what.append(nm, desc);
+    const have = document.createElement("td");
+    have.className = "n";
+    const enough = rc.have >= rc.count;
+    have.textContent = `${rc.have} / ${rc.count}`;
+    have.style.color = enough ? "var(--green-text)" : "var(--muted)";
+    const act = document.createElement("td");
+    act.style.cssText = "text-align:right;white-space:nowrap;";
+    const b = document.createElement("button");
+    b.className = "btn primary";
+    b.style.cssText = "font-size:12px;padding:4px 10px;";
+    b.textContent = "Cook";
+    b.disabled = fishingOff || !enough;
+    b.title = enough ? "" : `you need ${rc.count} ${rc.tier} fish in your net`;
+    b.onclick = () => cook(rc.recipe);
+    act.appendChild(b);
+    tr.append(what, have, act);
+    body.appendChild(tr);
+  }
+}
+
+function renderGear(gear) {
+  const card = $("gear-card");
+  if (!gear || !gear.catalog || !gear.catalog.length) {
+    card.style.display = "none";
+    $("stake-card").style.display = "none";
+    return;
+  }
+  card.style.display = "";
+  fillGear($("gear"), gear.catalog.filter(g => !g.stake), "gear-hint");
+  renderStakeGear(gear);
+}
+
+/* The stake exclusives sit in their own card: free, badge-only, and shown to
+   everyone (locked) so people know what the badge is worth. */
+function renderStakeGear(gear) {
+  const card = $("stake-card");
+  const rows = (gear.catalog || []).filter(g => g.stake);
+  if (!rows.length) { card.style.display = "none"; return; }
+  card.style.display = "";
+  const h2 = card.querySelector("h2");
+  if (window.stakeBadge && !h2.querySelector(".stake-badge")) h2.appendChild(stakeBadge("lg"));
+  // no standing blurb under this table any more — the 🔒 chips and the badge
+  // in the heading say the same thing. #stake-hint is left for buy outcomes.
+  fillGear($("stake-gear"), rows, "stake-hint");
+}
+
+function fillGear(body, rows, hintId) {
+  body.innerHTML = "";
+  for (const g of rows) {
+    const tr = document.createElement("tr");
+    if (g.locked) tr.className = "locked";
+    const what = document.createElement("td");
+    const nm = document.createElement("b");
+    nm.textContent = `${g.emoji} ${g.name}`;
+    const desc = document.createElement("span");
+    desc.style.cssText = "display:block;color:var(--muted);font-size:12px;";
+    desc.textContent = g.description;
+    what.append(nm, desc);
+    const cost = document.createElement("td");
+    cost.style.cssText = "text-align:right;font-family:var(--mono);white-space:nowrap;color:var(--gold);";
+    cost.textContent = g.price ? fmt(g.price) : "FREE";
+    const act = document.createElement("td");
+    act.style.cssText = "text-align:right;white-space:nowrap;";
+    if (g.kind !== "consumable" && g.owned) {
+      const tag = document.createElement("span");
+      tag.className = "chip fulfilled";
+      tag.textContent = "OWNED";
+      act.appendChild(tag);
+    } else {
+      if (g.kind === "consumable" && g.owned) {
+        const n = document.createElement("span");
+        n.style.cssText = "color:var(--muted);font-size:12px;margin-right:8px;";
+        n.textContent = g.owned + "× held";
+        act.appendChild(n);
+      }
+      if (g.locked) {
+        const tag = document.createElement("span");
+        tag.className = "chip locked";
+        tag.textContent = "🔒 STAKE ONLY";
+        tag.style.marginRight = "8px";
+        act.appendChild(tag);
+      }
+      const b = document.createElement("button");
+      b.className = "btn primary";
+      b.style.cssText = "font-size:12px;padding:4px 10px;";
+      b.textContent = g.price ? "Buy" : "Get";
+      b.disabled = !loggedIn || fishingOff || g.locked;
+      b.onclick = async () => {
+        const r = await fetch("/api/fishing/gear", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ item: g.key }),
+        });
+        const res = await r.json();
+        if (r.ok && window.sfx) sfx.cash();
+        if (r.ok && res.balance !== undefined)
+          $("balance").textContent = res.balance.toLocaleString() + " credits";
+        // the reload repaints the tables, so the outcome message goes up
+        // last or it'd be racing a render that clears the row it sits under
+        await load();
+        const hint = $(hintId);
+        hint.className = "hint " + (r.ok ? "ok" : "err");
+        hint.textContent = r.ok ? res.message : res.error;
+      };
+      act.appendChild(b);
+    }
+    tr.append(what, cost, act);
+    body.appendChild(tr);
+  }
+}
+
+load();
+setInterval(load, 20000);
+// phones suspend timers in background tabs — refresh as soon as we're back
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) load();
+});
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2dbda9f7a4811ff',t:'MTc4NzE3MDc3NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

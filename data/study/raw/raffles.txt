@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credits · Raffles</title>
+<link rel="stylesheet" href="/static/theme.css?v=3">
+<style>
+  main { max-width: 900px; }
+
+  .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .page-head h2 { margin-bottom: 0; }
+  .empty { color: var(--muted); padding: 18px 0 26px; font-size: 13px; }
+  #past-box { margin-top: 28px; }
+
+  section.raffle { margin-bottom: 16px; }
+  .raffle .top { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  .raffle .art {
+    width: 128px; height: 128px; flex: none; object-fit: cover; border-radius: 3px;
+    background: var(--inset); border: 1px solid var(--line);
+  }
+  .raffle .head { flex: 1; min-width: 200px; }
+  .raffle .prize { font-size: 19px; font-weight: 700; color: var(--ink); line-height: 1.25; }
+  .raffle .desc { color: var(--dim); font-size: 13px; margin-top: 6px; white-space: pre-line; overflow-wrap: anywhere; }
+
+  /* the numbers strip: price / sold / entrants / your odds */
+  .facts { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 14px; }
+  .facts .f-label { color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+  .facts .f-value { color: var(--ink); font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 16px; font-weight: 600; margin-top: 2px; }
+  .facts .f-value.gold { color: var(--gold); }
+  .facts .f-value.odds { color: var(--green-text); }
+
+  /* your slice of the hat */
+  .oddsbar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.07); margin-top: 14px; overflow: hidden; }
+  .oddsbar > i { display: block; height: 100%; background: var(--green); border-radius: 3px; transition: width 0.3s ease; }
+
+  /* buy row */
+  .buy { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .buy input { width: 110px; }
+  .buy .quick { font-size: 12px; padding: 5px 9px; }
+  .buy .cost { color: var(--muted); font-size: 12px; margin-left: auto; text-align: right; }
+  .buy .cost b { color: var(--gold); font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  .status-line { color: var(--muted); font-size: 12px; margin-top: 10px; }
+  .status-line b { color: var(--ink); font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* odds board */
+  .board { margin-top: 14px; }
+  .board summary {
+    display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none;
+    user-select: none; color: var(--muted); font-size: 11px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .board summary::-webkit-details-marker { display: none; }
+  .board summary::after { content: "▸"; margin-left: auto; font-size: 11px; transition: transform 0.15s ease; }
+  .board[open] summary::after { transform: rotate(90deg); }
+  .board table { margin-top: 10px; }
+  .board td.me { color: var(--green-text); font-weight: 600; }
+  .board .more { color: var(--muted); font-size: 12px; padding-top: 8px; }
+
+  /* winner banner on a drawn raffle */
+  .winner {
+    margin-top: 14px; padding: 12px 14px; border-radius: 3px;
+    background: rgba(47, 158, 95, 0.1); border: 1px solid rgba(47, 158, 95, 0.35);
+    color: var(--green-text); font-size: 14px;
+  }
+  .winner b { color: var(--ink); }
+  .winner .tk { color: var(--dim); font-size: 12px; display: block; margin-top: 3px; }
+  .cancelled { margin-top: 14px; padding: 12px 14px; border-radius: 3px;
+    background: rgba(180, 35, 24, 0.1); border: 1px solid rgba(180, 35, 24, 0.35);
+    color: var(--red-text); font-size: 13px; }
+
+  /* the public disqualification record — every rewound draw, with its reason */
+  .redraws { margin-top: 12px; padding: 10px 14px; border-radius: 3px;
+    background: rgba(200, 118, 25, 0.08); border: 1px solid rgba(200, 118, 25, 0.3); }
+  .redraws .rh { color: #eab308; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase; }
+  .redraws .row { color: var(--dim); font-size: 12px; margin-top: 6px; }
+  .redraws .row b { color: var(--ink); text-decoration: line-through; text-decoration-color: var(--muted); }
+  .redraws .row .why { color: var(--text); }
+  .redraws .row .tk { color: var(--muted); font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  .dq-note { margin-top: 12px; padding: 10px 14px; border-radius: 3px;
+    background: rgba(180, 35, 24, 0.1); border: 1px solid rgba(180, 35, 24, 0.35);
+    color: var(--red-text); font-size: 12px; }
+
+  .tag.shut { background: rgba(200, 118, 25, 0.18); color: #eab308; }
+  .tag.live { background: rgba(47, 158, 95, 0.18); color: var(--green-text); }
+
+  /* streamer controls */
+  .admin-bar { display: flex; gap: 6px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); flex-wrap: wrap; align-items: center; }
+  .admin-bar .btn { font-size: 12px; padding: 5px 10px; }
+  .admin-bar .spacer { margin-left: auto; }
+
+  .hint { margin-top: 10px; }
+  .hint:empty { display: none; }
+
+  /* ---------- the draw ----------
+     A raffle is the one moment on this page worth stopping for, so the
+     winner doesn't just appear in the card: the reel spins every name that
+     could win, slows down, and lands on one. Everybody watching the page
+     gets it, not just whoever pressed the button — the poll notices the
+     raffle flip to 'drawn' and plays the same reveal. */
+  .reveal {
+    position: fixed; inset: 0; z-index: 80; display: none;
+    align-items: center; justify-content: center; padding: 20px;
+    background: radial-gradient(760px 460px at 50% 42%, var(--accent-dim), transparent 70%),
+                rgba(6, 6, 8, 0.92);
+  }
+  .reveal.show { display: flex; animation: rv-fade 0.3s ease; }
+  @keyframes rv-fade { from { opacity: 0; } to { opacity: 1; } }
+
+  .rv-card {
+    position: relative; width: 100%; max-width: 560px; text-align: center;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 45%), var(--panel2);
+    border: 1px solid var(--line); border-radius: 4px; padding: 26px 22px 20px;
+    box-shadow: 0 30px 90px -30px #000, 0 0 0 1px rgba(0, 0, 0, 0.6);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .reveal.landed .rv-card {
+    border-color: rgba(47, 158, 95, 0.5);
+    box-shadow: 0 0 0 1px rgba(47, 158, 95, 0.35), 0 0 70px -12px rgba(47, 158, 95, 0.45),
+                0 30px 90px -30px #000;
+    animation: rv-pop 0.5s cubic-bezier(.18, .89, .32, 1.28);
+  }
+  @keyframes rv-pop { 40% { transform: scale(1.03); } }
+
+  .rv-eyebrow { color: var(--muted); font-size: 10px; font-weight: 700;
+                letter-spacing: 0.18em; text-transform: uppercase; }
+  .reveal.landed .rv-eyebrow { color: var(--green-text); }
+  .rv-prize { color: var(--ink); font-size: 20px; font-weight: 700; line-height: 1.25; margin-top: 6px; }
+  .rv-sub { color: var(--dim); font-size: 12px; margin-top: 5px; font-variant-numeric: tabular-nums; }
+
+  /* three rows tall, so the names above and below the winning band stay
+     visible — that's what makes a near miss read as a near miss */
+  .rv-reel {
+    position: relative; height: 168px; margin: 18px 0 4px; overflow: hidden;
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    -webkit-mask-image: linear-gradient(180deg, transparent, #000 26%, #000 74%, transparent);
+    mask-image: linear-gradient(180deg, transparent, #000 26%, #000 74%, transparent);
+  }
+  .rv-strip { will-change: transform; }
+  .rv-name {
+    height: 56px; line-height: 56px; padding: 0 12px; font-size: 21px; font-weight: 700;
+    color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .rv-name.hot { color: var(--ink); }
+  .reveal.landed .rv-name.hot { color: var(--green-text); text-shadow: 0 0 26px rgba(47, 158, 95, 0.5); }
+  /* the band the ticket lands in */
+  .rv-window {
+    position: absolute; left: 0; right: 0; top: 56px; height: 56px; pointer-events: none;
+    background: var(--accent-wash);
+    border-top: 1px solid var(--accent-line); border-bottom: 1px solid var(--accent-line);
+    transition: background 0.3s ease, border-color 0.3s ease;
+  }
+  .reveal.landed .rv-window {
+    background: rgba(47, 158, 95, 0.1);
+    border-top-color: rgba(47, 158, 95, 0.55); border-bottom-color: rgba(47, 158, 95, 0.55);
+  }
+
+  .rv-ticket { color: var(--gold); font-family: var(--mono); font-variant-numeric: tabular-nums;
+               font-size: 15px; margin-top: 12px; min-height: 1.4em; }
+  .rv-foot { color: var(--muted); font-size: 12px; margin-top: 10px; min-height: 1.4em; }
+  .rv-dismiss { color: var(--muted); font-size: 11px; margin-top: 14px;
+                letter-spacing: 0.06em; text-transform: uppercase; }
+
+  .rv-confetti { position: absolute; inset: -10px 0 0; overflow: hidden; pointer-events: none; }
+  .rv-confetti i { position: absolute; top: -20px; width: 7px; height: 12px; border-radius: 1px;
+                   animation: rv-fall linear forwards; }
+  @keyframes rv-fall {
+    from { transform: translateY(0) rotate(0); opacity: 1; }
+    to { transform: translateY(420px) rotate(760deg); opacity: 0; }
+  }
+
+  /* the banner the reveal hands off to, so the eye lands somewhere */
+  .winner.fresh { animation: rv-glow 1.4s ease-in-out 3; }
+  @keyframes rv-glow {
+    50% { background: rgba(47, 158, 95, 0.2); border-color: rgba(47, 158, 95, 0.7); }
+  }
+
+  /* a spinning reel is exactly the motion this asks to be spared, so the
+     reveal jumps straight to the result instead */
+  @media (prefers-reduced-motion: reduce) {
+    .reveal.show, .reveal.landed .rv-card { animation: none; }
+    .rv-confetti { display: none; }
+    .winner.fresh { animation: none; }
+  }
+
+  /* create / edit modal — same shape as the shop's */
+  .overlay { position: fixed; inset: 0; background: rgba(10, 10, 12, 0.75); display: none; align-items: flex-start; justify-content: center; z-index: 50; padding: 40px 16px 16px; overflow-y: auto; }
+  .overlay.show { display: flex; }
+  .modal { width: 100%; max-width: 460px; }
+  .modal h3 { color: var(--ink); font-size: 15px; margin-bottom: 6px; }
+  .modal label { display: block; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; margin: 12px 0 6px; }
+  .modal input, .modal textarea { width: 100%; }
+  .modal textarea { resize: vertical; min-height: 60px; }
+  .modal .row2 { display: flex; gap: 10px; }
+  .modal .row2 > div { flex: 1; }
+  .modal .sub { color: var(--muted); font-size: 11px; margin-top: 4px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+</style>
+</head>
+<body>
+  <header>
+    <h1><span>■</span> Raffles</h1>
+    <nav class="right" id="site-nav"></nav>
+  </header>
+  <script src="/static/nav.js?v=3"></script>
+  <script src="/static/sounds.js"></script>
+
+  <main>
+    <div class="page-head">
+      <h2 class="overline">Live raffles</h2>
+      <button class="btn primary" id="new-btn" style="display:none;">+ New raffle</button>
+    </div>
+    <div class="empty" id="open-empty" style="display:none;">Loading…</div>
+    <div id="open-list"></div>
+
+    <div id="past-box" style="display:none;">
+      <h2 class="overline">Past raffles</h2>
+      <div id="past-list"></div>
+    </div>
+  </main>
+
+  <!-- the draw, played out: reel spins, slows, lands on the winner -->
+  <div class="reveal" id="reveal">
+    <div class="rv-card">
+      <div class="rv-eyebrow" id="rv-eyebrow">Drawing the winner</div>
+      <div class="rv-prize" id="rv-prize"></div>
+      <div class="rv-sub" id="rv-sub"></div>
+      <div class="rv-reel">
+        <div class="rv-strip" id="rv-strip"></div>
+        <div class="rv-window"></div>
+      </div>
+      <div class="rv-ticket" id="rv-ticket"></div>
+      <div class="rv-foot" id="rv-foot"></div>
+      <div class="rv-dismiss" id="rv-dismiss"></div>
+      <div class="rv-confetti" id="rv-confetti"></div>
+    </div>
+  </div>
+
+  <!-- create / edit raffle -->
+  <div class="overlay" id="modal-overlay">
+    <div class="card modal">
+      <h3 id="modal-title">New raffle</h3>
+      <label>Prize</label>
+      <input id="m-prize" maxlength="120" placeholder="PlayStation 5">
+      <label>Details (optional)</label>
+      <textarea id="m-desc" maxlength="400" placeholder="Brand new, sealed. Shipped anywhere in the EU — winner drawn live on stream."></textarea>
+      <label>Image link (optional)</label>
+      <input id="m-image" placeholder="https://…/ps5.jpg">
+      <div class="row2">
+        <div>
+          <label>Ticket price</label>
+          <input id="m-price" type="number" min="1" placeholder="5000">
+        </div>
+        <div>
+          <label>Max per viewer</label>
+          <input id="m-cap" type="number" min="0" placeholder="0 = no limit">
+        </div>
+      </div>
+      <label>Entries close in (minutes)</label>
+      <input id="m-ends" type="number" min="0" placeholder="0 = stays open until you close it">
+      <div class="sub">You always draw the winner yourself — the timer only stops new entries.</div>
+      <div class="hint err" id="m-hint"></div>
+      <div class="modal-actions">
+        <button class="btn" id="m-cancel">Cancel</button>
+        <button class="btn primary" id="m-save">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- disqualify the standing winner and pull again -->
+  <div class="overlay" id="redraw-overlay">
+    <div class="card modal">
+      <h3>Disqualify winner &amp; redraw</h3>
+      <div class="sub" id="rd-who"></div>
+      <label>Reason (shown publicly)</label>
+      <input id="rd-reason" maxlength="200" placeholder="account created today, no chat history">
+      <div class="sub">Posted in chat and kept on the raffle card, so chat can see
+        this was one disqualification and not a reroll until you liked the name.</div>
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);">
+        <input type="checkbox" id="rd-refund" style="width:auto;">
+        Refund their tickets too
+      </label>
+      <div class="sub">Leave off for a bot or alt — getting caught shouldn't pay.
+        Turn on when the winner did nothing wrong (can't take delivery, duplicate entry).</div>
+      <div class="hint err" id="rd-hint"></div>
+      <div class="modal-actions">
+        <button class="btn" id="rd-cancel">Cancel</button>
+        <button class="btn danger" id="rd-go">Disqualify &amp; redraw</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => Math.floor(n).toLocaleString();
+
+const st = {
+  open: [], past: [], logged: false, admin: false, bal: 0,
+  enabled: true, maxPerBuy: 10000,
+  counts: {},   // raffle id -> what's typed in its ticket box
+  hints: {},    // raffle id -> {text, ok}
+  boards: new Set(),  // raffle ids whose odds board the viewer opened
+  loaded: false,
+  sig: null,    // last rendered payload — an unchanged poll repaints nothing
+  seen: {},     // raffle id -> {status, drawn_at} as of the last poll
+  seenReady: false,   // false until the first poll lands (see watchForDraws)
+  revealing: false,   // a winner reveal is on screen — hold the repaints
+};
+
+// Prize images are cached by node, not just by URL: the poll rebuilds the
+// cards, and a fresh <img> would re-request and flash on every refresh.
+// Moving the same element into the new card keeps the decoded image.
+const artCache = new Map();
+
+function prizeImage(r) {
+  const key = r.id + "|" + r.image_url;
+  let img = artCache.get(key);
+  if (!img) {
+    img = document.createElement("img");
+    img.className = "art";
+    img.alt = "";
+    img.loading = "lazy";
+    // a dead link drops the frame instead of leaving a broken-image box —
+    // remembered, so the next render doesn't put it back
+    img.onerror = () => { img.dataset.broken = "1"; img.remove(); };
+    // .src, never innerHTML — the link is streamer-supplied text
+    img.src = r.image_url;
+    artCache.set(key, img);
+  }
+  return img.dataset.broken ? null : img;
+}
+
+async function refresh() {
+  let d;
+  try {
+    const r = await fetch("/api/raffles");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    d = await r.json();
+  } catch (e) {
+    if (!st.loaded) $("open-empty").textContent = "⚠️ Couldn't load raffles — retrying…";
+    return;
+  }
+  st.loaded = true;
+  st.open = d.open || [];
+  st.past = d.past || [];
+  st.logged = d.logged_in;
+  st.admin = d.is_admin;
+  st.enabled = d.enabled !== false;
+  st.maxPerBuy = d.max_per_buy || 10000;
+  if (d.balance !== undefined) {
+    st.bal = d.balance;
+    $("balance").textContent = d.balance.toLocaleString() + " credits";
+  }
+  watchForDraws();
+  render();
+}
+
+// A raffle that just flipped to 'drawn' — or a drawn one whose winner changed,
+// which is a redraw — gets the reel instead of a name quietly appearing in the
+// card. This runs off the poll, so viewers who never touched the draw button
+// see it too, a few seconds behind the streamer at worst.
+function watchForDraws() {
+  const now = {};
+  for (const r of st.open.concat(st.past)) now[r.id] = { status: r.status, drawn_at: r.drawn_at };
+  const before = st.seen;
+  st.seen = now;
+  if (!st.seenReady) { st.seenReady = true; return; }  // first load reveals nothing
+  if (st.revealing || document.hidden) return;         // rAF is frozen in a hidden tab
+
+  for (const r of st.past) {
+    const was = before[r.id];
+    if (r.status !== "drawn" || !was) continue;
+    const fresh = was.status === "open";
+    const redrawn = was.status === "drawn" && was.drawn_at !== r.drawn_at;
+    // a draw we only learn about minutes later (laptop asleep, tab in the
+    // background) is history, not a moment — show it in the card instead
+    if ((fresh || redrawn) && Date.now() / 1000 - r.drawn_at < 45) {
+      startReveal(r, redrawn);
+      return;
+    }
+  }
+}
+
+function ago(ts) {
+  const s = Math.max(0, Math.floor(Date.now() / 1000 - ts));
+  if (s < 60) return s + "s ago";
+  if (s < 3600) return Math.floor(s / 60) + "m ago";
+  if (s < 86400) return Math.floor(s / 3600) + "h ago";
+  return Math.floor(s / 86400) + "d ago";
+}
+
+function until(ts) {
+  const s = Math.max(0, ts - Math.floor(Date.now() / 1000));
+  if (s < 60) return s + "s";
+  if (s < 3600) return Math.floor(s / 60) + "m " + (s % 60) + "s";
+  if (s < 86400) return Math.floor(s / 3600) + "h " + Math.floor((s % 3600) / 60) + "m";
+  return Math.floor(s / 86400) + "d " + Math.floor((s % 86400) / 3600) + "h";
+}
+
+function render() {
+  // never repaint out from under someone mid-type (the poll runs every 8s)
+  const active = document.activeElement;
+  if (active && (active.classList?.contains("tickets") || active.closest?.(".modal"))) return;
+  // the reveal is the one telling the story — painting the winner into the
+  // card behind it would spoil the reel that's still spinning
+  if (st.revealing) return;
+
+  // Most polls bring back exactly what's already on screen. Rebuilding the
+  // cards for those is pure churn the viewer sees, so compare first and bail.
+  // The minute bucket is in the signature because the "entries close in…"
+  // countdown is rendered text — it has to repaint as often as it changes,
+  // and no more.
+  const sig = JSON.stringify([st.open, st.past, st.logged, st.admin, st.bal,
+                              st.enabled, st.hints,
+                              st.open.some((r) => r.ends_at) ? Math.floor(Date.now() / 60000) : 0]);
+  if (sig === st.sig) return;
+  st.sig = sig;
+
+  $("new-btn").style.display = st.admin ? "" : "none";
+
+  const openBox = $("open-list");
+  openBox.innerHTML = "";
+  for (const r of st.open) openBox.appendChild(card(r));
+  $("open-empty").style.display = st.open.length ? "none" : "block";
+  $("open-empty").textContent = !st.enabled
+    ? "Raffles are switched off right now — check back later!"
+    : st.admin
+      ? "No raffles running — hit + New raffle to put a prize up."
+      : "No raffle running right now. Next one will show up here!";
+
+  $("past-box").style.display = st.past.length ? "" : "none";
+  const pastBox = $("past-list");
+  pastBox.innerHTML = "";
+  for (const r of st.past) pastBox.appendChild(card(r));
+}
+
+function fact(label, value, cls) {
+  const d = document.createElement("div");
+  const l = document.createElement("div");
+  l.className = "f-label";
+  l.textContent = label;
+  const v = document.createElement("div");
+  v.className = "f-value" + (cls ? " " + cls : "");
+  v.textContent = value;
+  d.append(l, v);
+  return d;
+}
+
+function card(r) {
+  const card = document.createElement("section");
+  card.className = "card raffle";
+
+  const top = document.createElement("div");
+  top.className = "top";
+  if (r.image_url) {
+    const img = prizeImage(r);
+    if (img) top.appendChild(img);
+  }
+  const head = document.createElement("div");
+  head.className = "head";
+  const prize = document.createElement("div");
+  prize.className = "prize";
+  prize.textContent = "🎟️ " + r.prize;
+  if (r.status === "open") {
+    const tag = document.createElement("span");
+    tag.className = "tag " + (r.closed ? "shut" : "live");
+    tag.textContent = r.closed ? "ENTRIES CLOSED" : "LIVE";
+    tag.style.marginLeft = "8px";
+    prize.appendChild(tag);
+  }
+  head.appendChild(prize);
+  if (r.description) {
+    const desc = document.createElement("div");
+    desc.className = "desc";
+    desc.textContent = r.description;
+    head.appendChild(desc);
+  }
+
+  const facts = document.createElement("div");
+  facts.className = "facts";
+  facts.appendChild(fact("Ticket price", fmt(r.ticket_price), "gold"));
+  // a disqualification pulls tickets out of the hat, so this is what's live
+  facts.appendChild(fact(r.past_draws?.length ? "Tickets in play" : "Tickets sold",
+                         fmt(r.total_tickets)));
+  facts.appendChild(fact("Entrants", fmt(r.entrants)));
+  if (r.your_tickets > 0) {
+    facts.appendChild(fact("Your tickets", fmt(r.your_tickets)));
+    facts.appendChild(fact(r.status === "open" ? "Your odds" : "Your odds were",
+                           r.your_pct.toFixed(1) + "%", "odds"));
+  }
+  head.appendChild(facts);
+
+  if (r.your_tickets > 0) {
+    const bar = document.createElement("div");
+    bar.className = "oddsbar";
+    const i = document.createElement("i");
+    i.style.width = Math.min(100, r.your_pct) + "%";
+    bar.appendChild(i);
+    head.appendChild(bar);
+  }
+  top.appendChild(head);
+  card.appendChild(top);
+
+  if (r.status === "open") card.appendChild(buyRow(r));
+  if (r.status === "drawn") card.appendChild(winnerBanner(r));
+  if (r.past_draws && r.past_draws.length) card.appendChild(redrawRecord(r));
+  if (r.you_disqualified) {
+    const n = document.createElement("div");
+    n.className = "dq-note";
+    n.textContent = "Your entry was disqualified from this raffle — your tickets "
+      + "were taken out of the draw. Ask the streamer if you think that's wrong.";
+    card.appendChild(n);
+  }
+  if (r.status === "cancelled") {
+    const c = document.createElement("div");
+    c.className = "cancelled";
+    c.textContent = "This raffle was called off — every ticket was refunded.";
+    card.appendChild(c);
+  }
+
+  if (r.top && r.top.length) card.appendChild(board(r));
+  if (st.admin) card.appendChild(adminBar(r));
+
+  const hint = st.hints[r.id];
+  if (hint) {
+    const el = document.createElement("div");
+    el.className = "hint " + (hint.ok ? "ok" : "err");
+    el.textContent = hint.text;
+    card.appendChild(el);
+  }
+  return card;
+}
+
+function buyRow(r) {
+  const wrap = document.createElement("div");
+
+  if (r.closed) {
+    const line = document.createElement("div");
+    line.className = "status-line";
+    line.textContent = "🔒 Entries are closed — the winner gets drawn on stream.";
+    wrap.appendChild(line);
+    return wrap;
+  }
+  if (!st.logged) {
+    const line = document.createElement("div");
+    line.className = "status-line";
+    line.innerHTML = '<a href="/auth/login" style="color:var(--blue-text);">Log in with Kick</a>'
+      + " to buy tickets — or type <b>!raffle [tickets]</b> in chat.";
+    wrap.appendChild(line);
+    return wrap;
+  }
+
+  const row = document.createElement("div");
+  row.className = "buy";
+
+  const box = document.createElement("input");
+  box.type = "number";
+  box.min = "1";
+  box.className = "tickets";
+  box.placeholder = "Tickets";
+  box.value = st.counts[r.id] || "";
+
+  const cost = document.createElement("span");
+  cost.className = "cost";
+
+  // how many more this viewer may hold (a per-viewer cap, what they can
+  // afford, and the per-purchase ceiling all bite)
+  const capLeft = r.max_per_user ? Math.max(0, r.max_per_user - r.your_tickets) : Infinity;
+  const affordable = Math.floor(st.bal / r.ticket_price);
+  const most = Math.min(capLeft, affordable, st.maxPerBuy);
+
+  function paint() {
+    const n = parseInt(box.value, 10);
+    if (!n || n < 1) {
+      cost.innerHTML = r.max_per_user
+        ? `Limit ${fmt(r.max_per_user)} per viewer — you can buy ${fmt(capLeft)} more`
+        : "Every ticket is one more entry in the hat";
+      return;
+    }
+    const total = n * r.ticket_price;
+    const after = r.total_tickets + n;
+    const odds = ((r.your_tickets + n) / after) * 100;
+    cost.innerHTML = total > st.bal
+      ? `<b style="color:var(--red-text)">${fmt(total)}</b> — more than you have`
+      : `<b>${fmt(total)}</b> credits → ${odds.toFixed(1)}% odds`;
+  }
+  box.addEventListener("input", () => { st.counts[r.id] = box.value; paint(); });
+
+  const buy = document.createElement("button");
+  buy.className = "btn primary";
+  buy.textContent = "Buy tickets";
+  buy.onclick = async () => {
+    const n = parseInt(box.value, 10);
+    if (!n || n < 1) { box.focus(); return; }
+    buy.disabled = true;
+    const res = await fetch("/api/raffles/buy", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ raffle_id: r.id, tickets: n }),
+    });
+    const d = await res.json();
+    st.hints[r.id] = { ok: res.ok, text: res.ok ? d.message : d.error };
+    if (res.ok) {
+      if (window.sfx) sfx.cash();
+      st.counts[r.id] = "";
+      if (d.balance !== undefined) {
+        st.bal = d.balance;
+        $("balance").textContent = d.balance.toLocaleString() + " credits";
+      }
+      setTimeout(() => { delete st.hints[r.id]; render(); }, 6000);
+    }
+    box.blur();  // let the repaint through
+    await refresh();
+  };
+
+  row.append(box);
+  for (const n of [1, 5, 10, 25]) {
+    if (n > most) continue;
+    const q = document.createElement("button");
+    q.className = "btn quick";
+    q.textContent = "+" + n;
+    q.onclick = () => {
+      box.value = Math.min(most, (parseInt(box.value, 10) || 0) + n);
+      st.counts[r.id] = box.value;
+      paint();
+    };
+    row.appendChild(q);
+  }
+  if (most >= 1 && most !== Infinity) {
+    const max = document.createElement("button");
+    max.className = "btn quick";
+    max.textContent = "Max";
+    max.title = "As many as you can afford";
+    max.onclick = () => { box.value = most; st.counts[r.id] = box.value; paint(); };
+    row.appendChild(max);
+  }
+  row.append(buy, cost);
+  paint();
+  wrap.appendChild(row);
+
+  if (r.ends_at) {
+    const line = document.createElement("div");
+    line.className = "status-line";
+    line.innerHTML = "⏳ Entries close in <b>" + until(r.ends_at) + "</b>";
+    wrap.appendChild(line);
+  }
+  return wrap;
+}
+
+function winnerBanner(r) {
+  const w = document.createElement("div");
+  // a banner painted right after the reel lands pulses once, so the eye has
+  // somewhere to go when the reveal closes
+  const justDrawn = r.drawn_at && Date.now() / 1000 - r.drawn_at < 30;
+  w.className = "winner" + (justDrawn ? " fresh" : "");
+  const line = document.createElement("div");
+  const b = document.createElement("b");
+  b.textContent = r.winner_name;
+  line.append("🏆 ", b, " won " + r.prize + "!");
+  const tk = document.createElement("span");
+  tk.className = "tk";
+  tk.textContent = `Ticket #${fmt(r.winning_ticket)} of ${fmt(r.total_tickets)}`
+    + (r.drawn_at ? " · drawn " + ago(r.drawn_at) : "");
+  w.append(line, tk);
+  return w;
+}
+
+function redrawRecord(r) {
+  const box = document.createElement("div");
+  box.className = "redraws";
+  const h = document.createElement("div");
+  h.className = "rh";
+  h.textContent = r.past_draws.length === 1
+    ? "⚠️ Redrawn once — the first pull was disqualified"
+    : `⚠️ Redrawn ${r.past_draws.length}× — those pulls were disqualified`;
+  box.appendChild(h);
+  for (const d of r.past_draws) {
+    const row = document.createElement("div");
+    row.className = "row";
+    const who = document.createElement("b");
+    who.textContent = d.username;
+    const tk = document.createElement("span");
+    tk.className = "tk";
+    tk.textContent = `ticket #${fmt(d.ticket)} of ${fmt(d.total_tickets)}`;
+    const why = document.createElement("span");
+    why.className = "why";
+    why.textContent = d.reason;
+    row.append(who, " drew ", tk, " — disqualified: ", why);
+    if (d.refunded > 0) row.append(` (${fmt(d.refunded)} credits refunded)`);
+    box.appendChild(row);
+  }
+  return box;
+}
+
+function board(r) {
+  const d = document.createElement("details");
+  d.className = "board";
+  // an opened board stays open across repaints — collapsing the odds someone
+  // is reading, every time the poll lands, is the whole reason this is tracked
+  d.open = st.boards.has(r.id);
+  d.addEventListener("toggle", () => {
+    if (d.open) st.boards.add(r.id); else st.boards.delete(r.id);
+  });
+  const s = document.createElement("summary");
+  s.textContent = r.status === "open" ? "Odds board" : "Final odds";
+  d.appendChild(s);
+
+  const wrap = document.createElement("div");
+  wrap.className = "table-wrap";
+  const table = document.createElement("table");
+  const head = document.createElement("tr");
+  head.innerHTML = "<th>Entrant</th><th class='num'>Tickets</th><th class='num'>Odds</th>";
+  table.appendChild(head);
+  for (const e of r.top) {
+    const tr = document.createElement("tr");
+    const who = document.createElement("td");
+    who.textContent = e.username;
+    if (r.status === "drawn" && e.username === r.winner_name) {
+      who.className = "me";
+      who.textContent = "🏆 " + e.username;
+    }
+    const tk = document.createElement("td");
+    tk.className = "num";
+    tk.textContent = fmt(e.tickets);
+    const pct = document.createElement("td");
+    pct.className = "num";
+    pct.textContent = e.pct.toFixed(1) + "%";
+    tr.append(who, tk, pct);
+    table.appendChild(tr);
+  }
+  wrap.appendChild(table);
+  d.appendChild(wrap);
+  if (r.entrants > r.top.length) {
+    const more = document.createElement("div");
+    more.className = "more";
+    more.textContent = `+ ${fmt(r.entrants - r.top.length)} more entrant(s)`;
+    d.appendChild(more);
+  }
+  return d;
+}
+
+/* ---------- the reveal ----------
+   The winner is already decided server-side before any of this runs — the
+   reel is theatre over a settled result, not part of picking it. It can be
+   skipped or missed entirely without changing anything. */
+
+const ROW = 56;          // height of one .rv-name — keep in step with the CSS
+const SPIN_MS = 5200;    // reel spins for this long before it settles
+const SPIN_STEPS = 34;   // names that go past on the way
+const FAST_TIME = 0.45;  // fraction of the spin at full speed…
+const FAST_STEPS = 0.7;  // …which covers this fraction of the names
+
+const rv = { raf: 0, timer: 0, idx: -1, tick: 0, r: null, redrawn: false, spinning: false };
+
+// Names for the reel, weighted by tickets so the people with the real odds
+// flash past most often. The odds board leaves out viewers who hid
+// themselves, so they stay off the reel too — but the winner is always in it.
+function reelNames(r) {
+  const pool = [];
+  for (const e of r.top || []) {
+    const weight = Math.max(1, Math.round(e.pct / 4));
+    for (let i = 0; i < weight; i++) pool.push(e.username);
+  }
+  const unique = new Set(pool);
+  const items = [];
+  let last = null;
+  const next = () => {
+    let pick;
+    if (unique.size > 1) {
+      // two of the same name in a row reads as a stuck reel, not a spin
+      do { pick = pool[Math.floor(Math.random() * pool.length)]; } while (pick === last);
+    } else {
+      // everyone who entered is hidden, or there's only one of them — spin
+      // ticket numbers instead and let the name land at the end
+      pick = "🎟️ #" + fmt(Math.floor(Math.random() * Math.max(1, r.total_tickets)) + 1);
+    }
+    last = pick;
+    return pick;
+  };
+  for (let i = 0; i < SPIN_STEPS; i++) items.push(next());
+  items.push(r.winner_name);   // index SPIN_STEPS — where the reel settles
+  last = r.winner_name;
+  // a couple of names past the winner, so the band isn't sitting on an empty
+  // reel once it stops
+  items.push(next(), next());
+  return items;
+}
+
+const tapWord = () => (matchMedia("(hover: none)").matches ? "Tap" : "Click");
+
+function reelPos(t) {
+  // full speed, then a long tail: the last two names crawl into the band,
+  // which is the whole point of watching
+  if (t >= 1) return SPIN_STEPS;
+  if (t < FAST_TIME) return SPIN_STEPS * FAST_STEPS * (t / FAST_TIME);
+  const u = (t - FAST_TIME) / (1 - FAST_TIME);
+  return SPIN_STEPS * (FAST_STEPS + (1 - FAST_STEPS) * (1 - (1 - u) * (1 - u)));
+}
+
+function setHot(idx) {
+  const strip = $("rv-strip");
+  strip.querySelector(".hot")?.classList.remove("hot");
+  strip.children[idx]?.classList.add("hot");
+}
+
+function startReveal(r, redrawn) {
+  st.revealing = true;
+  rv.r = r;
+  rv.redrawn = redrawn;
+  rv.idx = -1;
+  rv.tick = 0;
+
+  const strip = $("rv-strip");
+  strip.innerHTML = "";
+  strip.style.transform = "translateY(" + ROW + "px)";
+  for (const name of reelNames(r)) {
+    const row = document.createElement("div");
+    row.className = "rv-name";
+    row.textContent = name;   // .textContent — entrant names are viewer input
+    strip.appendChild(row);
+  }
+  $("rv-confetti").innerHTML = "";
+  $("reveal").classList.remove("landed");
+  $("rv-eyebrow").textContent = redrawn
+    ? "Redrawing — the last ticket was disqualified" : "Drawing the winner";
+  $("rv-prize").textContent = "🎟️ " + r.prize;
+  $("rv-sub").textContent = fmt(r.total_tickets) + " tickets · "
+    + fmt(r.entrants) + " entrant" + (r.entrants === 1 ? "" : "s") + " in the hat";
+  $("rv-ticket").textContent = "";
+  $("rv-foot").textContent = "";
+  $("rv-dismiss").textContent = tapWord() + " anywhere to skip";
+  $("reveal").classList.add("show");
+
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { land(); return; }
+
+  rv.spinning = true;
+  const t0 = performance.now();
+  const step = (now) => {
+    const t = Math.min(1, (now - t0) / SPIN_MS);
+    const p = reelPos(t);
+    strip.style.transform = "translateY(" + (ROW - p * ROW) + "px)";
+    const idx = Math.min(SPIN_STEPS, Math.floor(p));
+    if (idx !== rv.idx) {
+      rv.idx = idx;
+      setHot(idx);
+      // motion blur eases off with the reel; the last names are sharp
+      strip.style.filter = "blur(" + (1.5 * (1 - idx / SPIN_STEPS)).toFixed(2) + "px)";
+      $("rv-ticket").textContent = "🎟️ #"
+        + fmt(Math.floor(Math.random() * Math.max(1, r.total_tickets)) + 1);
+      if (window.sfx && now - rv.tick > 55) { rv.tick = now; sfx.tick(); }
+    }
+    if (t < 1) rv.raf = requestAnimationFrame(step); else land();
+  };
+  rv.raf = requestAnimationFrame(step);
+}
+
+function land() {
+  cancelAnimationFrame(rv.raf);
+  rv.spinning = false;
+  const r = rv.r;
+  const strip = $("rv-strip");
+  strip.style.filter = "";
+  strip.style.transform = "translateY(" + (ROW - SPIN_STEPS * ROW) + "px)";
+  setHot(SPIN_STEPS);
+
+  $("reveal").classList.add("landed");
+  $("rv-eyebrow").textContent = rv.redrawn ? "🏆 Redrawn winner" : "🏆 Winner";
+  $("rv-ticket").textContent = "Ticket #" + fmt(r.winning_ticket) + " of " + fmt(r.total_tickets);
+  const mine = (r.top || []).find((e) => e.username === r.winner_name);
+  $("rv-foot").textContent = mine
+    ? `Held ${fmt(mine.tickets)} ticket${mine.tickets === 1 ? "" : "s"} — a ${mine.pct.toFixed(1)}% shot at “${r.prize}”`
+    : `Wins “${r.prize}”`;
+  $("rv-dismiss").textContent = tapWord() + " anywhere to close";
+  confetti();
+  if (window.sfx) sfx.bigwin();
+  // long enough to read and screenshot, short enough that a forgotten tab
+  // isn't stuck behind it
+  rv.timer = setTimeout(closeReveal, 12000);
+}
+
+function confetti() {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const box = $("rv-confetti");
+  const colors = ["#5ed69a", "#2f9e5f", "#e9e6df", "#ff8a8d", "#c87619"];
+  for (let i = 0; i < 46; i++) {
+    const bit = document.createElement("i");
+    bit.style.left = (Math.random() * 100).toFixed(2) + "%";
+    bit.style.background = colors[i % colors.length];
+    bit.style.animationDuration = (1.5 + Math.random() * 1.4).toFixed(2) + "s";
+    bit.style.animationDelay = (Math.random() * 0.5).toFixed(2) + "s";
+    box.appendChild(bit);
+  }
+}
+
+function closeReveal() {
+  clearTimeout(rv.timer);
+  cancelAnimationFrame(rv.raf);
+  rv.spinning = false;
+  $("reveal").classList.remove("show");
+  $("rv-confetti").innerHTML = "";
+  st.revealing = false;
+  st.sig = null;   // the card changed while the repaints were held — paint it
+  render();
+}
+
+$("reveal").onclick = () => { if (rv.spinning) land(); else closeReveal(); };
+
+/* ---------- streamer controls ---------- */
+
+async function adminPost(url, body, raffleId) {
+  const r = await fetch(url, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const d = await r.json();
+  st.hints[raffleId] = { ok: r.ok, text: r.ok ? (d.message || "Done") : (d.error || "Failed") };
+  await refresh();
+}
+
+function adminBar(r) {
+  const bar = document.createElement("div");
+  bar.className = "admin-bar";
+  if (r.status === "drawn") {
+    // audit the winner's profile, and if they don't hold up, take them out
+    // of the hat and pull again from everyone else
+    const again = document.createElement("button");
+    again.className = "btn";
+    again.textContent = "⚠️ Disqualify winner & redraw";
+    again.onclick = () => openRedraw(r);
+    const note = document.createElement("span");
+    note.style.cssText = "color:var(--muted);font-size:12px;margin-left:auto;";
+    note.textContent = "Drawn — the ticket credits stay spent.";
+    bar.append(again, note);
+    return bar;
+  }
+  if (r.status !== "open") {
+    const note = document.createElement("span");
+    note.style.cssText = "color:var(--muted);font-size:12px;";
+    note.textContent = "Cancelled and refunded.";
+    bar.appendChild(note);
+    return bar;
+  }
+
+  const edit = document.createElement("button");
+  edit.className = "btn";
+  edit.textContent = "Edit";
+  edit.onclick = () => openModal(r);
+
+  const toggle = document.createElement("button");
+  toggle.className = "btn";
+  toggle.textContent = r.closed ? "Reopen entries" : "Close entries";
+  toggle.onclick = () => adminPost("/api/admin/raffles/close",
+                                   { raffle_id: r.id, closed: !r.closed }, r.id);
+
+  const draw = document.createElement("button");
+  draw.className = "btn success";
+  draw.textContent = "🎲 Draw winner";
+  draw.disabled = r.total_tickets < 1;
+  draw.onclick = async () => {
+    if (!confirm(`Draw the winner of “${r.prize}” from ${fmt(r.total_tickets)} tickets? This is final.`))
+      return;
+    draw.disabled = true;
+    // deliberately not adminPost: that hint line spells the winner out, which
+    // would give it away before the reel has spun a single name. The refresh
+    // below is what starts the reveal, for the streamer and chat alike.
+    const res = await fetch("/api/admin/raffles/draw", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ raffle_id: r.id }),
+    });
+    const d = await res.json();
+    if (!res.ok) st.hints[r.id] = { ok: false, text: d.error || "Failed" };
+    await refresh();
+  };
+
+  const cancel = document.createElement("button");
+  cancel.className = "btn danger spacer";
+  cancel.textContent = "Cancel & refund";
+  cancel.onclick = () => {
+    if (confirm(`Call off “${r.prize}” and refund all ${fmt(r.total_tickets)} tickets?`))
+      adminPost("/api/admin/raffles/cancel", { raffle_id: r.id }, r.id);
+  };
+
+  bar.append(edit, toggle, draw, cancel);
+  return bar;
+}
+
+/* ---------- create / edit modal ---------- */
+
+let editing = null;
+
+function openModal(r) {
+  editing = r ? r.id : null;
+  $("modal-title").textContent = r ? "Edit raffle" : "New raffle";
+  $("m-save").textContent = r ? "Save changes" : "Create raffle";
+  $("m-prize").value = r ? r.prize : "";
+  $("m-desc").value = r ? r.description : "";
+  $("m-image").value = r ? r.image_url : "";
+  $("m-price").value = r ? r.ticket_price : "";
+  $("m-cap").value = r && r.max_per_user ? r.max_per_user : "";
+  // the stored end time is absolute; the form takes minutes from now
+  $("m-ends").value = r && r.ends_at
+    ? Math.max(0, Math.round((r.ends_at - Date.now() / 1000) / 60)) : "";
+  // price and cap freeze once tickets are sold — the server refuses the
+  // change anyway, so grey them out rather than letting it fail on save
+  const sold = r && r.total_tickets > 0;
+  $("m-price").disabled = !!sold;
+  $("m-cap").disabled = !!sold;
+  $("m-hint").textContent = sold ? "Tickets are sold — price and cap are locked in." : "";
+  $("m-hint").className = "hint" + (sold ? "" : " err");
+  $("modal-overlay").classList.add("show");
+  $("m-prize").focus();
+}
+
+$("new-btn").onclick = () => openModal(null);
+$("m-cancel").onclick = () => $("modal-overlay").classList.remove("show");
+$("modal-overlay").addEventListener("click", (e) => {
+  if (e.target === $("modal-overlay")) $("modal-overlay").classList.remove("show");
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    if (st.revealing) { if (rv.spinning) land(); else closeReveal(); return; }
+    $("modal-overlay").classList.remove("show");
+    $("redraw-overlay").classList.remove("show");
+  }
+});
+
+/* ---------- disqualify & redraw ---------- */
+
+let redrawing = null;
+
+function openRedraw(r) {
+  redrawing = r.id;
+  $("rd-who").textContent =
+    `${r.winner_name} drew ticket #${fmt(r.winning_ticket)} of ${fmt(r.total_tickets)} `
+    + `for “${r.prize}”. Disqualifying takes their tickets out of the hat — they can't `
+    + `win the redraw, and everyone else's odds go up.`;
+  $("rd-reason").value = "";
+  $("rd-refund").checked = false;
+  $("rd-hint").textContent = "";
+  $("redraw-overlay").classList.add("show");
+  $("rd-reason").focus();
+}
+
+$("rd-cancel").onclick = () => $("redraw-overlay").classList.remove("show");
+$("redraw-overlay").addEventListener("click", (e) => {
+  if (e.target === $("redraw-overlay")) $("redraw-overlay").classList.remove("show");
+});
+
+$("rd-go").onclick = async () => {
+  const reason = $("rd-reason").value.trim();
+  if (!reason) {
+    $("rd-hint").textContent = "A reason is required — it's shown publicly.";
+    $("rd-reason").focus();
+    return;
+  }
+  $("rd-go").disabled = true;
+  const r = await fetch("/api/admin/raffles/redraw", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ raffle_id: redrawing, reason, refund: $("rd-refund").checked }),
+  });
+  const d = await r.json();
+  $("rd-go").disabled = false;
+  if (r.ok) {
+    // the server's reply names the new winner — the reel says it instead
+    $("redraw-overlay").classList.remove("show");
+    await refresh();
+  } else {
+    $("rd-hint").textContent = d.error || "Failed";
+  }
+};
+
+$("m-save").onclick = async () => {
+  const body = {
+    prize: $("m-prize").value,
+    description: $("m-desc").value,
+    image_url: $("m-image").value,
+    ticket_price: $("m-price").value || 0,
+    max_per_user: $("m-cap").value || 0,
+    ends_in_minutes: $("m-ends").value || 0,
+  };
+  if (editing !== null) body.id = editing;
+  const r = await fetch("/api/admin/raffles", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const d = await r.json();
+  if (r.ok) {
+    $("modal-overlay").classList.remove("show");
+    await refresh();
+  } else {
+    $("m-hint").className = "hint err";
+    $("m-hint").textContent = d.error || "Failed";
+  }
+};
+
+// Entries being shut means the draw is the next thing that happens, so the
+// poll tightens up — the reel should land on chat's screens while the
+// streamer is still saying the name, not eight seconds later.
+let pollTimer = null;
+
+function schedulePoll() {
+  clearTimeout(pollTimer);
+  pollTimer = setTimeout(pollNow, st.open.some((r) => r.closed) ? 3000 : 8000);
+}
+
+async function pollNow() {
+  await refresh();
+  schedulePoll();
+}
+
+refresh().then(schedulePoll);
+// phones suspend timers in background tabs — refresh as soon as we're back
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) pollNow();
+});
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2dbe2b97a7bd0c0',t:'MTc4NzE3MTEwNg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

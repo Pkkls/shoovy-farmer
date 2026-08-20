@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credits · Business</title>
+<link rel="stylesheet" href="/static/theme.css?v=3">
+<style>
+  main { max-width: 900px; }
+
+  /* the tills total first, then what the empire earns — same shape as the
+     fishing page's cast timer and the crime page's cooldown line */
+  .status { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
+  .status .cast { font-size: 15px; color: var(--ink); }
+  .status .cast b { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .status .prog { color: var(--muted); font-size: 12px; }
+  .status .prog:empty { display: none; }
+  .status .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+  section.card { margin-bottom: 16px; }
+  #collect-hint:empty, #buy-hint:empty { display: none; }
+
+  /* ---- one owned business ---- */
+  .biz { border: 1px solid var(--line); border-radius: 3px; padding: 12px; margin-bottom: 10px; }
+  .biz .head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .biz .head b { color: var(--ink); font-size: 14px; }
+  .biz .head .lvl { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+  .biz .head .rate { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--gold); white-space: nowrap; }
+
+  /* the till meter: the thing that makes leaving the tab open worth it */
+  .meter { position: relative; height: 22px; margin: 10px 0 6px; background: var(--inset);
+           border-radius: 2px; overflow: hidden; }
+  .meter .fill { position: absolute; inset: 0 auto 0 0; width: 0;
+                 background: linear-gradient(90deg, var(--green), var(--green-text));
+                 transition: width 0.9s linear; }
+  /* a full till has stopped earning — it should look like a problem */
+  .meter.full .fill { background: linear-gradient(90deg, var(--orange), #e9a63a); transition: none; }
+  .meter .label { position: absolute; inset: 0; display: flex; align-items: center;
+                  justify-content: center; font-family: var(--mono); font-size: 11px;
+                  font-weight: 600; color: var(--ink); text-shadow: 0 1px 2px rgba(0,0,0,0.7); }
+  .biz .sub { color: var(--muted); font-size: 12px; }
+  .biz .buys { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .biz .buys .btn { font-size: 12px; padding: 4px 10px; }
+  .pips { font-family: var(--mono); letter-spacing: 1px; }
+
+  .slot-empty { border: 1px dashed var(--line-strong); border-radius: 3px; padding: 14px;
+                text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+
+  /* trading-hours banner — open (live) reads as good news, shut as a nudge */
+  #hours { border-radius: 3px; padding: 9px 12px; margin-bottom: 16px; font-size: 13px;
+           border: 1px solid var(--line); }
+  #hours b { font-weight: 600; }
+  #hours.open { color: var(--green-text); border-color: rgba(50,164,103,0.4);
+                background: rgba(50,164,103,0.10); }
+  #hours.shut { color: var(--dim); background: var(--inset); }
+
+  /* ---- collapsible "more info" ---- */
+  .info-box > summary {
+    display: flex; align-items: center; gap: 10px; margin-top: 10px;
+    cursor: pointer; list-style: none; user-select: none;
+  }
+  .info-box > summary::-webkit-details-marker { display: none; }
+  .info-box > summary::after { content: "▸"; margin-left: auto; color: var(--muted);
+    font-size: 11px; transition: transform 0.15s ease; }
+  .info-box[open] > summary::after { transform: rotate(90deg); }
+  .info-box > summary h2 { margin-bottom: 0; }
+
+  .chip { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; border-radius: 2px; padding: 1px 6px; white-space: nowrap; }
+  .chip.owned { color: var(--green-text); background: rgba(50, 164, 103, 0.15); }
+  .chip.risk { color: var(--red-text); background: rgba(163, 38, 33, 0.18); }
+
+  /* ---- off the books ----
+     Illegal shops are the same component in a warmer palette rather than a
+     different one: they behave identically (a till, a meter, a collect), and
+     the only things that actually differ are the colour of the money and
+     what can go wrong with it. */
+  .biz.illegal { border-color: rgba(200, 118, 25, 0.45); background: rgba(200, 118, 25, 0.04); }
+  .biz.illegal .meter .fill { background: linear-gradient(90deg, var(--orange), var(--amber)); }
+  .biz.illegal .head .rate { color: var(--amber); }
+  /* a raided shop is dead weight until it reopens — it should read that way */
+  .biz.shut { border-color: rgba(163, 38, 33, 0.5); background: rgba(163, 38, 33, 0.06); }
+  .biz.shut .meter .fill { background: var(--red); }
+  .biz .shut-line { color: var(--red-text); font-size: 12px; margin-top: 8px; }
+
+  /* the laundry: dirty stash on the left, what a wash pays on the right */
+  #laundry { border: 1px solid rgba(200, 118, 25, 0.45); background: rgba(200, 118, 25, 0.05); }
+  #laundry .figures { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  #laundry .fig { display: flex; flex-direction: column; gap: 2px; }
+  #laundry .fig .k { color: var(--muted); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
+  #laundry .fig .v { font-family: var(--mono); font-size: 18px; color: var(--amber); font-variant-numeric: tabular-nums; }
+  #laundry .fig .v.clean { color: var(--green-text); }
+  #laundry .wash { margin-left: auto; }
+  #laundry .cap { margin-top: 12px; }
+  #laundry .cap .bar { position: relative; height: 8px; background: var(--inset); border-radius: 2px; overflow: hidden; }
+  #laundry .cap .bar i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--green); }
+  #laundry .cap .sub { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  #wash-hint:empty { display: none; }
+  td.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+</style>
+</head>
+<body>
+  <header>
+    <h1><span>■</span> Business</h1>
+    <nav class="right" id="site-nav"></nav>
+  </header>
+  <script src="/static/nav.js?v=3"></script>
+  <script src="/static/sounds.js"></script>
+  <script src="/static/badges.js"></script>
+
+  <main>
+    <div class="status">
+      <div class="row">
+        <!-- placeholder until the first /api/business load lands — it must not
+             look like finished content, or a slow load reads as a broken page -->
+        <span class="cast" id="till-status">🏪 Loading…</span>
+        <button class="btn success" id="collect-btn" style="display:none;">Collect all</button>
+      </div>
+      <span class="prog" id="empire-line"></span>
+    </div>
+
+    <!-- trading hours: why the meters are moving at the speed they are -->
+    <div id="hours" style="display:none;"></div>
+    <div class="hint" id="collect-hint"></div>
+
+    <!-- the laundry sits between the tills and the shops: it's where the
+         money from one becomes money you can spend on the other -->
+    <section class="card" id="laundry" style="display:none;">
+      <h2>The laundry</h2>
+      <div class="figures">
+        <div class="fig"><span class="k">Dirty stash</span><span class="v" id="dirty-total">0</span></div>
+        <div class="fig"><span class="k">Clean right now</span><span class="v clean" id="wash-net">0</span></div>
+        <div class="wash"><button class="btn success" id="wash-btn">Wash</button></div>
+      </div>
+      <div class="cap">
+        <div class="bar"><i id="cap-fill"></i></div>
+        <div class="sub" id="cap-line"></div>
+      </div>
+      <div class="hint" id="wash-hint"></div>
+    </section>
+
+    <section class="card" id="mine-card" style="display:none;">
+      <h2>Your businesses</h2>
+      <div id="mine"></div>
+      <div class="hint" id="buy-hint"></div>
+    </section>
+
+    <section class="card" id="catalog-card" style="display:none;">
+      <h2>Open a business</h2>
+      <div class="table-wrap"><table><tbody id="catalog"></tbody></table></div>
+      <details class="info-box">
+        <summary><h2>More info</h2></summary>
+        <div class="hint">A business earns while you're away — but its <b>till only holds so much</b>.
+          Once it's full it stops earning until you empty it, so the money is only there if you come back
+          for it. Type <b>!collect</b> in chat or hit Collect all here.
+          <b>Trading hours:</b> shops earn their full rate while the stream is <b>live</b> and a fraction of it
+          once the stream is off, so the money is in turning up. A till that fills across a stream going live
+          keeps both rates — when you collect makes no difference to what it's worth, only how much has built up.
+          <b>Upgrades</b> raise a business's rate up to level 5 (double). A <b>manager</b> triples how much
+          that till can hold, which buys you slack rather than income — worth it if you can't check in often.
+          <b>Security</b> hides part of the till from <b>!rob</b>: uncollected takings are cash in a register,
+          and no safe or vault covers them, so an untended till is the easiest money in the channel to steal.
+          <b>Slots</b> cap how many businesses you can run at once.
+          Bought the wrong shop? You can <b>sell up</b> — a business hands back a share of everything
+          you've spent on it, upgrades and all, plus whatever is sitting in its till. It's always less
+          than you put in, so it's a way out of a bad buy rather than a way to park credits.
+          Emptying the tills sometimes runs into a <b>business event</b> — a viral clip, a health inspector —
+          that scales the whole take up or down.
+          Every legal business also quietly <b>launders dirty money</b> for you — see Off the books below —
+          so a straight shop is worth keeping even once you can afford the other kind.</div>
+      </details>
+    </section>
+
+    <section class="card" id="crime-card" style="display:none;">
+      <h2>Off the books</h2>
+      <div class="table-wrap"><table><tbody id="crime-catalog"></tbody></table></div>
+      <details class="info-box">
+        <summary><h2>More info</h2></summary>
+        <div class="hint">These pay <b>dirty money</b> into a separate stash that buys nothing
+          anywhere on the site until you've washed it. Per credit invested they earn more than
+          anything legal — the laundering fee and the police are what hand that difference back.
+          <b>Washing</b> goes through the <b>legal</b> businesses you run: each one launders a share
+          of its own hourly income, unused capacity banks up while your shops are trading, and the
+          fee comes off the top. Run nothing but illegal places and you'll pile up money you
+          can't spend, which is the whole reason both halves compete for the same slots.
+          <b>Busts</b> are rolled when you collect, and the odds are priced per hour of takings
+          sitting in the till — so collecting often and collecting rarely carry the same risk for
+          the same money, and a full till has stopped earning so it stops attracting attention too.
+          A raid seizes everything in that till, fines you a share of it, and shuts the place for
+          hours. <b>Payoffs</b> cut those odds by up to three quarters and are bought per business,
+          exactly like security.
+          One consolation: <b>!rob can't touch an illegal till</b>. A robbery moves spendable
+          credits, and dirty money isn't spendable — so legal shops carry the robbery risk and
+          illegal ones carry the raid risk, and each buys its own defence.</div>
+      </details>
+    </section>
+
+    <section class="card" id="board-card" style="display:none;">
+      <h2>Biggest empires</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>Owner</th><th class="num">Businesses</th><th class="num">Per hour</th></tr></thead>
+        <tbody id="board"></tbody>
+      </table></div>
+    </section>
+  </main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => Math.floor(n).toLocaleString();
+
+let d = null, loggedIn = false, bizOff = false;
+let loadedOnce = false, retryTimer = null, tickTimer = null;
+// what each till held at the last load, plus its rate — the meters are
+// extrapolated from these once a second so the bars visibly fill between
+// the 20s polls instead of jumping
+let ticks = [];
+
+function fmtLeft(s) {
+  if (s <= 0) return "full";
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  if (h) return `${h}h ${m}m`;
+  const sec = s % 60;
+  return m ? `${m}m ${sec}s` : `${sec}s`;
+}
+
+// one second of accrual across every owned till, drawn without a round trip
+function tick() {
+  clearTimeout(tickTimer);
+  if (!ticks.length) return;
+  let total = 0, dirty = 0;
+  for (const t of ticks) {
+    // a shop the police shut isn't earning — its meter holds where it is
+    if (!t.shut) t.held = Math.min(t.cap, t.held + t.rate / 3600);
+    if (t.illegal) dirty += t.held; else total += t.held;
+    const pct = t.cap > 0 ? Math.min(100, (t.held / t.cap) * 100) : 0;
+    const full = t.cap > 0 && t.held >= t.cap;
+    if (t.fill) t.fill.style.width = pct + "%";
+    if (t.meter) t.meter.classList.toggle("full", full);
+    if (t.label) t.label.textContent = fmt(t.held) + " / " + fmt(t.cap) + (full ? " · FULL" : "");
+    if (t.note) {
+      const left = t.rate > 0 ? Math.max(0, Math.round((t.cap - t.held) * 3600 / t.rate)) : 0;
+      t.note.textContent = t.shut ? "shut by the police — reopens in " + fmtLeft(t.shut)
+        : full ? "till full — it's stopped earning" : "full in " + fmtLeft(left);
+    }
+    if (t.shut) t.shut = Math.max(0, t.shut - 1);
+  }
+  paintTotal(total, dirty);
+  tickTimer = setTimeout(tick, 1000);
+}
+
+function paintTotal(total, dirty) {
+  if (!loggedIn || bizOff) return;
+  const btn = $("collect-btn");
+  if (!ticks.length) {
+    $("till-status").innerHTML = "🏪 You don't run anything yet — open your first business below.";
+    btn.style.display = "none";
+    return;
+  }
+  // the two are never added up: they're different money, and one figure
+  // would read as spending power that half of it doesn't have
+  let line = "🏪 <b>" + fmt(total) + "</b> credits waiting in your tills";
+  if (dirty > 0)
+    line += ' · <b style="color:var(--amber);">' + fmt(dirty) + "</b> dirty";
+  $("till-status").innerHTML = line;
+  btn.style.display = "";
+  btn.disabled = Math.floor(total) + Math.floor(dirty) < 1;
+}
+
+async function load() {
+  clearTimeout(retryTimer);
+  try {
+    const ctl = new AbortController();
+    const timeout = setTimeout(() => ctl.abort(), 15000);
+    const r = await fetch("/api/business", { signal: ctl.signal });
+    clearTimeout(timeout);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    d = await r.json();
+  } catch (e) {
+    if (!loadedOnce) {
+      $("till-status").innerHTML = "⚠️ Couldn't load your businesses — retrying…";
+      // before anything has rendered a blank page is all the user sees, so
+      // retry quickly instead of waiting out the 20s poll
+      retryTimer = setTimeout(load, 5000);
+    }
+    return;
+  }
+  loadedOnce = true;
+  loggedIn = d.logged_in;
+  bizOff = d.enabled === false;
+
+  if (d.balance !== undefined)
+    $("balance").textContent = d.balance.toLocaleString() + " credits";
+
+  if (bizOff) {
+    $("till-status").innerHTML = "🚫 Businesses are currently disabled.";
+    $("empire-line").textContent = "";
+    $("collect-btn").style.display = "none";
+    for (const id of ["mine-card", "laundry", "crime-card", "catalog-card", "board-card"])
+      $(id).style.display = "none";
+    return;
+  }
+  if (!loggedIn) {
+    $("till-status").innerHTML =
+      '<a href="/auth/login" style="color:var(--blue-text);">Log in with Kick</a> to open a business.';
+    $("collect-btn").style.display = "none";
+  }
+
+  renderHours();
+  renderMine();
+  renderLaundry();
+  renderCatalog();
+  renderBoard();
+
+  const bits = [];
+  if (d.total_income)
+    bits.push(`earning ${fmt(d.total_income_now)} credits/hour`
+              + (d.total_income_now !== d.total_income
+                 ? ` (${fmt(d.total_income)} while live)` : ""));
+  if (loggedIn) bits.push(`${d.used_slots}/${d.slots} slots used`);
+  if (d.income_pct !== 100) bits.push(`channel income at ${d.income_pct}%`);
+  $("empire-line").textContent = bits.join(" · ");
+
+  tick();
+}
+
+function renderHours() {
+  const el = $("hours");
+  if (!d.gating) { el.style.display = "none"; return; }
+  el.style.display = "";
+  el.className = d.live ? "open" : "shut";
+  el.innerHTML = d.live
+    ? `\u{1F534} <b>Open for business</b> \u2014 the stream is live, so your shops are earning `
+      + `their full rate (${d.live_pct}%). This is the time to be collecting.`
+    : `\u{1F319} <b>Shut for the night</b> \u2014 the stream is off, so your shops are ticking over `
+      + `at ${d.offline_pct}%. They earn their full rate again when the stream is back.`;
+}
+
+function renderMine() {
+  const card = $("mine-card"), host = $("mine");
+  ticks = [];
+  if (!loggedIn || !d.businesses.length) {
+    card.style.display = "none";
+    paintTotal(0, 0);
+    return;
+  }
+  card.style.display = "";
+  host.innerHTML = "";
+
+  for (const b of d.businesses) {
+    const box = document.createElement("div");
+    box.className = "biz" + (b.illegal ? " illegal" : "") + (b.shut_for ? " shut" : "");
+
+    const head = document.createElement("div");
+    head.className = "head";
+    const nm = document.createElement("b");
+    nm.textContent = `${b.emoji} ${b.name}`;
+    const lvl = document.createElement("span");
+    lvl.className = "lvl";
+    lvl.textContent = `LVL ${b.level}/${b.max_level}`;
+    const rate = document.createElement("span");
+    rate.className = "rate";
+    // a shut shop earns nothing, so quoting its rate in the corner would be
+    // the one number on the row contradicting the other three
+    if (b.shut_for) {
+      rate.textContent = "SHUT";
+      rate.style.color = "var(--red-text)";
+      rate.title = `earns nothing until it reopens — normally ${fmt(b.income_per_hour)}/hr`;
+    } else {
+      rate.textContent = fmt(b.income_now) + (b.illegal ? " dirty / hr" : " / hr");
+      if (b.income_now !== b.income_per_hour) {
+        rate.title = `${fmt(b.income_per_hour)}/hr while the stream is live`;
+        rate.style.color = "var(--dim)";
+      }
+    }
+    head.append(nm, lvl, rate);
+
+    const meter = document.createElement("div");
+    meter.className = "meter";
+    const fill = document.createElement("div");
+    fill.className = "fill";
+    const label = document.createElement("div");
+    label.className = "label";
+    meter.append(fill, label);
+
+    const note = document.createElement("div");
+    note.className = "sub";
+
+    const extras = document.createElement("div");
+    extras.className = "sub";
+    const badges = [`till holds ${b.till_hours}h`];
+    if (b.manager) badges.push("👔 manager");
+    // each half of the catalog carries exactly one defence, against the one
+    // risk that can actually reach it
+    if (b.illegal) {
+      if (b.payoff > 0)
+        badges.push(`🤝 payoffs ${"●".repeat(b.payoff)}${"○".repeat(b.max_payoff - b.payoff)} (${b.payoff_pct}% off the odds of a raid)`);
+      else badges.push("🚔 nobody paid off — the police are looking at this one");
+      // the live figure alone reads as ~0% right after a collection, so the
+      // full-till number is quoted next to it: that's what's being risked
+      badges.push(`raid risk ${b.bust_pct}% now · ${b.bust_full_pct}% on a full till`);
+    } else if (b.security > 0)
+      badges.push(`🔒 security ${"●".repeat(b.security)}${"○".repeat(b.max_security - b.security)} (${b.security_pct}% of the till hidden from !rob)`);
+    else badges.push("🔓 no security — the whole till is robbable");
+    extras.textContent = badges.join(" · ");
+
+    const buys = document.createElement("div");
+    buys.className = "buys";
+    if (b.upgrade_cost > 0)
+      buys.appendChild(actionBtn("upgrade", b.id,
+        `Upgrade to L${b.level + 1} · ${fmt(b.upgrade_cost)}`,
+        `→ ${fmt(b.next_income)}/hr`));
+    if (b.manager_cost > 0)
+      buys.appendChild(actionBtn("manager", b.id, `Hire manager · ${fmt(b.manager_cost)}`,
+        `till holds ${Math.round(b.till_hours * d.manager_mult)}h`));
+    if (b.security_cost > 0)
+      buys.appendChild(actionBtn("security", b.id, `Security +1 · ${fmt(b.security_cost)}`,
+        "hides more of the till from !rob"));
+    if (b.payoff_cost > 0)
+      buys.appendChild(actionBtn("payoff", b.id, `Payoff +1 · ${fmt(b.payoff_cost)}`,
+        "cuts the odds of this place getting raided"));
+
+    // income_now, not income_per_hour: off air the meter should visibly
+    // crawl rather than promise a rate the business isn't earning
+    const state = { held: b.pending, cap: b.till_cap, rate: b.income_now,
+                    illegal: b.illegal, shut: b.shut_for,
+                    fill, label, meter, note };
+    ticks.push(state);
+
+    // Selling comes last and in red, because it's a loss and a deletion. The
+    // confirm quotes the till off the ticking meter rather than off the last
+    // poll, so the number in the dialog is the one on the bar behind it.
+    const sell = document.createElement("button");
+    sell.className = "btn danger";
+    sell.textContent = `Sell · ${fmt(b.sale_value)}`;
+    sell.title = `${d.sell_pct}% of the ${fmt(b.spent)} you've spent on it`;
+    sell.onclick = () => {
+      const till = Math.floor(Math.min(state.cap, state.held));
+      if (!confirm(
+            `Sell the ${b.emoji} ${b.name}?\n\n`
+            + `You get ${fmt(b.sale_value)} credits back — ${d.sell_pct}% of the `
+            + `${fmt(b.spent)} you've spent on it, so you lose `
+            + `${fmt(b.spent - b.sale_value)}.\n`
+            + (till > 0 ? `The ${fmt(till)} in its till comes with it.\n` : "")
+            + `The slot goes free. The business is gone for good.`)) return;
+      post("/api/business/sell", { id: b.id }, "buy-hint");
+    };
+    buys.appendChild(sell);
+
+    box.append(head, meter, note, extras, buys);
+    host.appendChild(box);
+  }
+
+  // the free slots, so the ceiling is visible before you hit it
+  for (let i = d.businesses.length; i < d.slots; i++) {
+    const empty = document.createElement("div");
+    empty.className = "slot-empty";
+    empty.textContent = "Empty slot — open a business below";
+    host.appendChild(empty);
+  }
+  if (d.slot_price > 0) {
+    const buy = document.createElement("button");
+    buy.className = "btn";
+    buy.style.cssText = "font-size:12px;padding:4px 10px;margin-top:4px;";
+    buy.textContent = `Buy another slot · ${fmt(d.slot_price)}`;
+    buy.onclick = () => post("/api/business/slot", {}, "buy-hint");
+    host.appendChild(buy);
+  } else if (d.slots >= d.max_slots) {
+    const max = document.createElement("div");
+    max.className = "hint";
+    max.textContent = `You're running the maximum ${d.max_slots} businesses.`;
+    host.appendChild(max);
+  }
+  paintTotal(d.total_pending, d.total_dirty_pending);
+}
+
+function actionBtn(action, id, label, title) {
+  const b = document.createElement("button");
+  b.className = "btn";
+  b.textContent = label;
+  b.title = title || "";
+  b.onclick = () => post("/api/business/improve", { action, id }, "buy-hint");
+  return b;
+}
+
+function renderLaundry() {
+  const card = $("laundry"), L = d.launder || {};
+  // the card is for people the feature is actually live for: anyone holding
+  // dirty money, or running something that will produce it
+  const relevant = loggedIn && (d.dirty > 0 || d.businesses.some((b) => b.illegal));
+  if (!relevant) { card.style.display = "none"; return; }
+  card.style.display = "";
+
+  $("dirty-total").textContent = fmt(d.dirty);
+  $("wash-net").textContent = fmt(L.net || 0);
+  const btn = $("wash-btn");
+  btn.disabled = !(L.net > 0);
+  btn.textContent = L.net > 0 ? `Wash ${fmt(L.washable)} → ${fmt(L.net)}` : "Wash";
+
+  const pct = L.cap > 0 ? Math.min(100, (L.available / L.cap) * 100) : 0;
+  $("cap-fill").style.width = pct + "%";
+  if (!L.rate) {
+    $("cap-line").innerHTML = "You've no legal business to wash it through — "
+      + "<b>a legitimate shop is what launders dirty money</b>. Open one below and its "
+      + "books will take " + (L.capacity_pct || 0) + "% of its own hourly income.";
+  } else {
+    let line = `Capacity: <b>${fmt(L.available)}</b> of ${fmt(L.cap)} — your legal `
+      + `businesses wash ${fmt(L.rate)}/hr between them and bank up to ${L.hours}h of it. `
+      + `The fee is ${L.fee_pct}%.`;
+    if (d.dirty > (L.available || 0))
+      line += ` <b style="color:var(--amber);">${fmt(d.dirty - L.available)} of your stash `
+        + `is over capacity</b> — more legal shops, or wait for it to build back up.`;
+    $("cap-line").innerHTML = line;
+  }
+}
+
+function renderCatalog() {
+  drawCatalog($("catalog-card"), $("catalog"), (g) => !g.illegal);
+  drawCatalog($("crime-card"), $("crime-catalog"), (g) => g.illegal);
+}
+
+function drawCatalog(card, body, want) {
+  const list = (d.catalog || []).filter(want);
+  if (!list.length) { card.style.display = "none"; return; }
+  card.style.display = "";
+  body.innerHTML = "";
+  const room = loggedIn && d.used_slots < d.slots;
+
+  for (const g of list) {
+    const tr = document.createElement("tr");
+    const what = document.createElement("td");
+    const nm = document.createElement("b");
+    nm.textContent = `${g.emoji} ${g.name}`;
+    const desc = document.createElement("span");
+    desc.style.cssText = "display:block;color:var(--muted);font-size:12px;";
+    desc.textContent = g.illegal
+      ? `${g.description} — ${fmt(g.income_per_hour)} dirty/hr, till holds ${fmt(g.till_cap)}`
+      : `${g.description} — ${fmt(g.income_per_hour)}/hr, till holds ${fmt(g.till_cap)}`;
+    // The raid risk rides along with the other stats rather than sitting in
+    // the action cell: that cell is nowrap and has to hold the Open button,
+    // so a third item in it pushes the button off a narrow screen. Here it
+    // wraps with the description, and an illegal row is exactly as wide as
+    // a legal one.
+    if (g.illegal && g.bust_pct > 0) {
+      const risk = document.createElement("span");
+      risk.className = "chip risk";
+      risk.textContent = g.bust_pct + "% RAID";
+      risk.title = "the chance a full till gets raided when you collect it, "
+        + "before any payoffs";
+      risk.style.marginLeft = "6px";
+      desc.append(" ", risk);
+    }
+    what.append(nm, desc);
+
+    const cost = document.createElement("td");
+    cost.className = "num";
+    cost.style.color = "var(--gold)";
+    cost.textContent = fmt(g.price);
+
+    const act = document.createElement("td");
+    act.style.cssText = "text-align:right;white-space:nowrap;";
+    if (g.owned) {
+      const tag = document.createElement("span");
+      tag.className = "chip owned";
+      tag.textContent = g.owned > 1 ? `${g.owned}× OWNED` : "OWNED";
+      tag.style.marginRight = "8px";
+      act.appendChild(tag);
+    }
+    const b = document.createElement("button");
+    b.className = "btn primary";
+    b.style.cssText = "font-size:12px;padding:4px 10px;";
+    b.textContent = "Open";
+    b.disabled = !room;
+    b.title = room ? "" : (loggedIn ? "no free slots — buy one above" : "log in first");
+    b.onclick = () => post("/api/business/buy", { kind: g.key }, "buy-hint");
+    act.appendChild(b);
+
+    tr.append(what, cost, act);
+    body.appendChild(tr);
+  }
+}
+
+function renderBoard() {
+  const card = $("board-card"), body = $("board");
+  if (!d.leaderboard || !d.leaderboard.length) { card.style.display = "none"; return; }
+  card.style.display = "";
+  body.innerHTML = "";
+  d.leaderboard.forEach((row, i) => {
+    const tr = document.createElement("tr");
+    if (row.me) tr.style.background = "var(--accent-dim)";
+    const rank = document.createElement("td");
+    rank.style.color = "var(--muted)";
+    rank.textContent = i + 1;
+    const who = document.createElement("td");
+    who.textContent = row.username;  // text first, never innerHTML
+    if (row.stake) who.appendChild(stakeBadge());
+    if (row.prestige) who.appendChild(fishBadge("", row.prestige));
+    const count = document.createElement("td");
+    count.className = "num";
+    count.textContent = row.count;
+    const income = document.createElement("td");
+    income.className = "num";
+    income.style.color = "var(--gold)";
+    income.textContent = fmt(row.income);
+    tr.append(rank, who, count, income);
+    body.appendChild(tr);
+  });
+}
+
+async function post(url, body, hintId) {
+  const hint = $(hintId);
+  let res = {}, ok = false;
+  try {
+    const r = await fetch(url, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    res = await r.json();
+    ok = r.ok;
+  } catch (e) {
+    res = { error: "network error — try again" };
+  }
+  if (ok && window.sfx) sfx.cash();
+  if (ok && res.balance !== undefined)
+    $("balance").textContent = res.balance.toLocaleString() + " credits";
+  // the reload repaints the cards, so the outcome message goes up last or
+  // it'd be racing a render that clears the row it sits under
+  await load();
+  hint.className = "hint " + (ok ? "ok" : "err");
+  hint.textContent = ok ? res.message : res.error;
+}
+
+$("wash-btn").onclick = async () => {
+  $("wash-btn").disabled = true;
+  await post("/api/business/launder", {}, "wash-hint");
+};
+
+$("collect-btn").onclick = async () => {
+  $("collect-btn").disabled = true;
+  await post("/api/business/collect", {}, "collect-hint");
+};
+
+load();
+setInterval(load, 20000);
+// phones suspend timers in background tabs — refresh as soon as we're back,
+// so the meters resync instead of resuming from a stale extrapolation
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) load();
+});
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2dbff42fbacd482',t:'MTc4NzE3MjI3NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

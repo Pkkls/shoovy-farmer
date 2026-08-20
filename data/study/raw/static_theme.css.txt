@@ -1,0 +1,671 @@
+/* ============================================================================
+   OPERATIONAL THEME — shared across every page.
+
+   Dark, dense, mission-control: near-black surfaces, hairline structure, one
+   electric accent (cyan), monospace for anything that is a number. The shell
+   is a fixed command bar across the top and a persistent nav rail down the
+   left; nav.js builds the markup for both, this file owns their looks.
+
+   Tokens below are the single source of truth. The older names (--blue*,
+   --panel2, --gold …) are kept as aliases so page-level <style> blocks keep
+   working — change a colour here and it moves everywhere.
+   ========================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* ---- surfaces ---- */
+  --void: #050608;          /* deepest — behind panels, table gutters */
+  --bg: #080a0e;            /* app background */
+  --panel: #0c0f15;         /* command bar / rail / recessed areas */
+  --panel2: #0f131b;        /* cards + panels */
+  --elevated: #141a24;      /* hover, raised rows */
+  --inset: #05070a;         /* input wells, meters, sunken areas */
+  --line: #1b2230;          /* hairline borders */
+  --line-strong: #273143;   /* input borders, active edges */
+
+  /* ---- neutral controls ---- */
+  --btn: #131924;
+  --btn-hover: #1c2431;
+
+  /* ---- text ---- */
+  --ink: #e8edf5;           /* headings, emphasised values */
+  --text: #b6c0cf;          /* body */
+  --dim: #8a95a8;           /* secondary */
+  --muted: #5c6a80;         /* tertiary, labels, units */
+
+  /* ---- primary accent: electric cyan by default ----
+     Admin > Appearance overwrites this whole block at runtime (nav.js writes
+     the derived shades onto <html> from the one hex the streamer picked), so
+     nothing anywhere should hardcode the accent — always var(--accent…). */
+  --accent: #00d4ff;
+  --accent-bright: #5ce4ff;
+  --accent-glow: rgba(0, 212, 255, 0.40);   /* halo behind a lit control */
+  --accent-line: rgba(0, 212, 255, 0.28);   /* hairlines, brackets, borders */
+  --accent-dim: rgba(0, 212, 255, 0.12);    /* active fills */
+  --accent-wash: rgba(0, 212, 255, 0.07);   /* the glow off the top of the page */
+  --accent-faint: rgba(0, 212, 255, 0.04);  /* the far end of a fade */
+  --on-accent: #04121a;                     /* text on an accent-filled button */
+
+  /* legacy aliases — the pages still say var(--blue) for "primary" */
+  --blue: #00d4ff; --blue-hover: #5ce4ff; --blue-text: #4fd8f7;
+
+  /* ---- intents ---- */
+  --green: #17855a; --green-hover: #126b49; --green-text: #34d399;
+  --red: #a32621;   --red-hover: #841c18;   --red-text: #ff6b70;
+  --amber: #f59e0b; --orange: #c87619;
+  --gold: #f5b544;          /* currency / value readouts */
+
+  --ok: var(--green-text);
+  --warn: var(--amber);
+  --critical: var(--red-text);
+  --offline: var(--muted);
+
+  --font: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+          Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo,
+          Consolas, monospace;
+
+  --shadow-1: 0 0 0 1px rgba(0, 0, 0, 0.5);
+
+  /* the command bar is translucent, so it needs its own tinted surface —
+     var(--panel) at 92% would defeat the blur behind it */
+  --bar-bg: rgba(10, 13, 19, 0.92);
+
+  /* ---- shell metrics ---- */
+  --bar-h: 46px;
+  --rail-w: 216px;
+}
+
+/* ---- surface themes (Admin > Appearance) ----
+   Each one restates only the greys; every accent shade is computed from the
+   chosen hex and set on <html>, so the two choices are independent. */
+:root[data-theme="carbon"] {
+  --void: #060607; --bg: #0a0a0b; --panel: #101011; --panel2: #131315;
+  --elevated: #1b1b1e; --inset: #08080a;
+  --line: #232326; --line-strong: #33333a;
+  --btn: #17171a; --btn-hover: #212127;
+  --ink: #eeeeef; --text: #bdbdc2; --dim: #92929b; --muted: #66666f;
+  --bar-bg: rgba(14, 14, 16, 0.92);
+}
+:root[data-theme="abyss"] {
+  --void: #000000; --bg: #000000; --panel: #060608; --panel2: #08080b;
+  --elevated: #121218; --inset: #000000;
+  --line: #1c1c24; --line-strong: #2c2c38;
+  --btn: #0e0e13; --btn-hover: #191921;
+  --ink: #ffffff; --text: #c2c6d0; --dim: #8d93a1; --muted: #5b6070;
+  --bar-bg: rgba(0, 0, 0, 0.92);
+}
+:root[data-theme="steel"] {
+  --void: #0d1016; --bg: #11151d; --panel: #161b25; --panel2: #1a202b;
+  --elevated: #222936; --inset: #0d1016;
+  --line: #2a323f; --line-strong: #3a4453;
+  --btn: #212836; --btn-hover: #2b3444;
+  --ink: #eef2f8; --text: #c3ccd9; --dim: #97a2b3; --muted: #6b788c;
+  --bar-bg: rgba(21, 26, 35, 0.92);
+}
+
+* { box-sizing: border-box; margin: 0; }
+
+/* Native-app feel on mobile: kill double-tap-to-zoom and the 300ms tap delay
+   so rapid tapping (e.g. dropping Plinko balls) never zooms the page. Pinch-
+   to-zoom and scrolling still work, so accessibility isn't affected. */
+html { touch-action: manipulation; }
+button, a, input, select, textarea, label, .btn, [role="button"] {
+  touch-action: manipulation;
+}
+
+body {
+  color: var(--text);
+  font: 13px/1.55 var(--font);
+  letter-spacing: 0.01em;
+  min-height: 100svh;
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--bg);
+  /* a faint survey grid + a cold glow off the top edge */
+  background-image:
+    linear-gradient(to right, rgba(120, 160, 200, 0.022) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(120, 160, 200, 0.022) 1px, transparent 1px),
+    radial-gradient(1000px 460px at 50% -12%, var(--accent-wash), transparent 70%);
+  background-size: 44px 44px, 44px 44px, 100% 100%;
+  background-attachment: fixed;
+  padding-top: var(--bar-h);
+  padding-left: var(--rail-w);
+}
+
+/* CRT scanlines — barely there, but the screen stops feeling like paper */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0, 0, 0, 0.045) 2px, rgba(0, 0, 0, 0.045) 4px);
+}
+
+/* ============================ COMMAND BAR ================================ */
+header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  /* below the pages' own modal overlays (z-index 50) so a dialog can cover
+     the bar, above everything that merely scrolls under it */
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  height: var(--bar-h);
+  padding: 0 14px;
+  gap: 14px;
+  background: var(--bar-bg);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+/* the accent hairline that runs under the whole bar */
+header::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg,
+    var(--accent-line), var(--accent-faint) 45%, transparent 80%);
+}
+header h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+/* the status LED before the wordmark */
+header h1 > span:first-child {
+  color: var(--accent);
+  font-size: 9px;
+  line-height: 1;
+  text-shadow: 0 0 10px var(--accent-glow), 0 0 4px var(--accent);
+  animation: led-pulse 2.6s ease-in-out infinite;
+}
+@keyframes led-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* ============================== NAV RAIL ================================= */
+.op-rail {
+  position: fixed;
+  top: var(--bar-h); bottom: 0; left: 0;
+  z-index: 35;
+  width: var(--rail-w);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  overflow: hidden;
+}
+.op-rail .rail-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 0 14px;
+  scrollbar-width: thin;
+}
+.op-rail .rail-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 14px 14px 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.op-rail .rail-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.op-rail a.rail-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--dim);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: background 0.12s, color 0.12s;
+}
+.op-rail a.rail-item .idx {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+.op-rail a.rail-item:hover,
+.op-rail a.rail-item:focus-visible {
+  background: var(--elevated);
+  color: var(--ink);
+  outline: none;
+}
+.op-rail a.rail-item.current {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+.op-rail a.rail-item.current .idx { color: var(--accent); opacity: 0.7; }
+
+.op-rail .rail-foot {
+  border-top: 1px solid var(--line);
+  padding: 10px 14px 12px;
+  background: var(--void);
+}
+.op-rail .rail-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 2px 0;
+}
+.op-rail .rail-stat b {
+  font-family: var(--mono);
+  font-weight: 500;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 110px;
+}
+.op-rail .rail-stat b.ok { color: var(--ok); }
+
+.rail-scrim { display: none; }
+
+/* =============================== LAYOUT ================================== */
+main {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 22px 22px 56px;
+}
+
+footer {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 22px 36px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+footer a { color: var(--muted); text-decoration: none; }
+footer a:hover { color: var(--accent); }
+
+/* ============================== PANELS =================================== */
+/* .card is the atomic unit — squared, hairline, no drop shadow. */
+.card, .panel {
+  position: relative;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 0;
+  padding: 16px 18px;
+}
+/* a short accent tick in the top-left corner: the HUD bracket */
+.card::before, .panel::before {
+  content: "";
+  position: absolute;
+  top: -1px; left: -1px;
+  width: 14px; height: 14px;
+  border-top: 1px solid var(--accent-line);
+  border-left: 1px solid var(--accent-line);
+  pointer-events: none;
+}
+
+.card h2, h2.overline, .panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 14px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--line);
+}
+.card h2::before, h2.overline::before, .panel-title::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 2px; height: 11px;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* a title that shares its row with a caret or a counter can't carry the rule
+   under it — the line would stop halfway across the row */
+summary h2, summary .panel-title, .row-title h2 {
+  margin-bottom: 0; padding-bottom: 0; border-bottom: 0;
+}
+
+h1 { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+h2 { font-size: 14px; font-weight: 600; letter-spacing: 0.02em; }
+h3 { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; }
+
+/* tiling grid for panel layouts: .grid > * spans by --span (default 12) */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 14px;
+}
+.grid > * { grid-column: span 12; }
+.grid > .col-3 { grid-column: span 3; }
+.grid > .col-4 { grid-column: span 4; }
+.grid > .col-5 { grid-column: span 5; }
+.grid > .col-6 { grid-column: span 6; }
+.grid > .col-7 { grid-column: span 7; }
+.grid > .col-8 { grid-column: span 8; }
+.grid > .col-9 { grid-column: span 9; }
+@media (max-width: 900px) {
+  .grid > .col-3, .grid > .col-4, .grid > .col-5, .grid > .col-6,
+  .grid > .col-7, .grid > .col-8, .grid > .col-9 { grid-column: span 12; }
+}
+
+/* ============================== METRICS ================================== */
+.metric {
+  position: relative;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  padding: 12px 14px 13px;
+  overflow: hidden;
+}
+.metric::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0.35;
+}
+.metric.ok::after { background: var(--green-text); }
+.metric.warn::after { background: var(--amber); }
+.metric.crit::after { background: var(--red-text); }
+.metric .k {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+.metric .v {
+  font-family: var(--mono);
+  font-size: 23px;
+  font-weight: 300;
+  line-height: 1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.metric .s {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+  min-height: 1.2em;
+}
+
+/* ============================== BUTTONS ================================== */
+button { font: inherit; cursor: pointer; border: 0; border-radius: 0; }
+.btn {
+  display: inline-block;
+  background: var(--btn);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 0;
+  padding: 7px 14px;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.45;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s, color 0.12s;
+}
+.btn:hover { background: var(--btn-hover); border-color: var(--accent-line); color: var(--ink); }
+.btn.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 14px -2px var(--accent-glow);
+}
+.btn.primary:hover {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+  box-shadow: 0 0 20px -2px var(--accent-glow);
+}
+.btn.success {
+  background: rgba(23, 133, 90, 0.18); color: var(--green-text);
+  border-color: rgba(52, 211, 153, 0.35);
+}
+.btn.success:hover { background: rgba(23, 133, 90, 0.3); border-color: var(--green-text); }
+.btn.danger {
+  background: rgba(163, 38, 33, 0.18); color: var(--red-text);
+  border-color: rgba(255, 107, 112, 0.32);
+}
+.btn.danger:hover { background: rgba(163, 38, 33, 0.32); border-color: var(--red-text); }
+.btn:disabled { opacity: 0.38; cursor: not-allowed; }
+.btn:focus-visible, button:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ========================== FORM CONTROLS ================================ */
+input, select, textarea {
+  background: var(--inset);
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  border-radius: 0;
+  padding: 7px 10px;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-dim), inset 0 0 12px var(--accent-faint);
+}
+input:disabled, select:disabled, textarea:disabled { opacity: 0.5; cursor: not-allowed; }
+::placeholder { color: var(--muted); opacity: 0.7; }
+
+label { font-size: 12px; }
+
+/* =============================== TABS ==================================== */
+.tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 18px;
+  flex-wrap: nowrap;
+  /* keep the submenu on a single row and scroll it sideways on narrow
+     screens instead of wrapping links onto extra rows */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button {
+  background: none;
+  color: var(--muted);
+  font-family: var(--font);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 9px 12px;
+  border-radius: 0;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.12s, background 0.12s;
+}
+.tabs button:hover:not(.active) { color: var(--ink); background: var(--elevated); }
+.tabs button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+/* ============================== TABLES =================================== */
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding-bottom: 8px;
+  white-space: nowrap;
+}
+td {
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+}
+/* breathing room between adjacent columns — without it, right-aligned
+   numbers in neighboring cells run together into one unreadable string */
+td + td, th + th { padding-left: 14px; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tbody tr:hover td { background: var(--elevated); color: var(--ink); }
+
+/* ========================== TEXT HELPERS ================================= */
+.hint { color: var(--muted); font-size: 12px; min-height: 1.3em; }
+.hint.ok, .hint.win { color: var(--green-text); }
+.hint.err, .hint.loss { color: var(--red-text); }
+.up { color: var(--green-text); }
+.down { color: var(--red-text); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.label {
+  font-size: 9px; font-weight: 600; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--muted);
+}
+
+.tag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: rgba(92, 106, 128, 0.14);
+  color: var(--dim);
+  border: 1px solid var(--line);
+  border-radius: 0;
+  padding: 2px 8px;
+  vertical-align: middle;
+}
+.tag.live { color: var(--red-text); border-color: rgba(255, 107, 112, 0.35); background: rgba(163, 38, 33, 0.18); }
+.tag.on { color: var(--accent); border-color: var(--accent-line); background: var(--accent-dim); }
+
+/* status dot — the pulse says "this is live data" */
+.dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--offline);
+  flex: 0 0 auto;
+}
+.dot.on { background: var(--ok); box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.14); animation: dot-pulse 2.2s ease-in-out infinite; }
+.dot.live { background: var(--red-text); box-shadow: 0 0 0 2px rgba(255, 107, 112, 0.16); animation: dot-pulse 1.6s ease-in-out infinite; }
+.dot.cy { background: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); animation: dot-pulse 2.2s ease-in-out infinite; }
+@keyframes dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--accent-dim); }
+  50% { box-shadow: 0 0 0 5px var(--accent-faint); }
+}
+
+/* a 1px sweep bar — "receiving telemetry" */
+.sweep { position: relative; height: 1px; background: var(--line); overflow: hidden; }
+.sweep::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: sweep 2.2s ease-in-out infinite;
+}
+@keyframes sweep {
+  0% { transform: translateX(-100%); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+
+/* ====================== SCROLLABLE TABLES ================================ */
+/* Every table sits in one of these: when the columns can't shrink to fit
+   (many numeric columns on a narrow screen) the table scrolls inside the
+   card instead of stretching the page or clipping at the edge. */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ---------- scrollbars ---------- */
+* { scrollbar-color: var(--line-strong) transparent; }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line-strong); border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-line); background-clip: content-box; }
+
+/* ============================== MOBILE =================================== */
+@media (max-width: 980px) {
+  body { padding-left: 0; }
+  /* the rail slides in over the page instead of holding a column */
+  .op-rail {
+    transform: translateX(-100%);
+    transition: transform 0.18s ease;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+  }
+  body.rail-open .op-rail { transform: none; }
+  .rail-scrim {
+    display: block;
+    position: fixed;
+    inset: var(--bar-h) 0 0 0;
+    z-index: 30;
+    background: rgba(4, 6, 9, 0.6);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+  }
+  body.rail-open .rail-scrim { opacity: 1; pointer-events: auto; }
+}
+
+@media (max-width: 620px) {
+  /* one row, always: the wordmark gives up width before anything wraps */
+  header { padding: 0 10px; gap: 9px; }
+  header h1 { font-size: 11px; letter-spacing: 0.16em; min-width: 0; }
+  header h1 .beta-badge { display: none; }
+  header h1 .brand-name { overflow: hidden; text-overflow: ellipsis; }
+}
+
+@media (max-width: 720px) {
+  main { padding: 16px 12px 44px; }
+  .card, .panel { padding: 14px 13px; }
+  footer { padding: 0 12px 30px; }
+  .grid { gap: 10px; }
+  /* iOS zooms the page when a focused control's text is under 16px */
+  input, select, textarea { font-size: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

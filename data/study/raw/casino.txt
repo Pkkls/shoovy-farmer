@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credits · Casino</title>
+<link rel="stylesheet" href="/static/theme.css?v=3">
+<style>
+  /* The lobby. Ten games is too many for the tab strip on /games, so this is
+     the way in: one tile per game, each linking at the game's tab. The art is
+     inline SVG on a gradient — no image assets to ship or keep in sync. */
+  .lobby-head {
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid var(--line); padding-bottom: 10px; margin-bottom: 16px;
+  }
+  .lobby-head h2 { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+  .lobby-head .count {
+    margin-left: auto; color: var(--muted); font-family: var(--mono);
+    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+
+  .lobby { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 18px 14px; }
+  @media (max-width: 420px) { .lobby { grid-template-columns: repeat(2, 1fr); gap: 14px 10px; } }
+
+  .tile { display: block; text-decoration: none; color: inherit; }
+  .tile .art {
+    position: relative; aspect-ratio: 3 / 4; border-radius: 0; overflow: hidden;
+    border: 1px solid var(--line);
+    transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  }
+  /* the colour wash sits under a heavy scrim: eleven bright gradients still
+     have to read as one dark console, and the art is the only thing that
+     needs to carry hue */
+  .tile .art::before {
+    content: ""; position: absolute; inset: 0; z-index: 0;
+    background:
+      linear-gradient(180deg, rgba(5, 7, 10, 0.46), rgba(5, 7, 10, 0.88)),
+      repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, 0.16) 3px 4px);
+  }
+  /* HUD bracket, same corner tick the panels use */
+  .tile .art::after {
+    content: ""; position: absolute; top: 5px; left: 5px; z-index: 2;
+    width: 12px; height: 12px;
+    border-top: 1px solid var(--accent-line); border-left: 1px solid var(--accent-line);
+  }
+  .tile:hover .art, .tile:focus-visible .art {
+    transform: translateY(-3px);
+    border-color: var(--accent-line);
+    box-shadow: 0 0 26px -8px var(--accent-glow);
+  }
+  .tile:focus-visible .art { outline: 1px solid var(--accent); outline-offset: 2px; }
+  .tile:hover .name { color: #fff; text-shadow: 0 0 16px var(--accent-glow); }
+
+  /* art sits in the top half, the name rides the bottom */
+  .tile svg { position: absolute; left: 12%; top: 9%; width: 76%; height: 50%; z-index: 1; opacity: 0.92; }
+  .tile .label { position: absolute; left: 0; right: 0; bottom: 9%; z-index: 2; padding: 0 8px; text-align: center; }
+  .tile .name {
+    display: block; font-size: clamp(13px, 1.7vw, 17px); font-weight: 700; line-height: 1.15;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink);
+    transition: color 0.16s ease, text-shadow 0.16s ease;
+  }
+  /* a three-word name at the full size wraps to three lines and climbs over
+     the art — the long ones get their own step down instead */
+  .tile .name.long { font-size: clamp(11px, 1.4vw, 14px); }
+  /* one line, always: the channel name is arbitrary, and a wrapped subtitle
+     shoves itself into the title above it */
+  .tile .sub {
+    display: block; margin-top: 7px; font-family: var(--mono); font-size: 8.5px;
+    font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--accent); opacity: 0.75;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .tile .meta {
+    display: flex; align-items: center; gap: 7px; margin-top: 9px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .tile .meta b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 500; }
+  .tile .dot {
+    flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green-text); box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.14);
+  }
+
+  /* one gradient per game, so a tile is recognisable before you read it */
+  .art-plinko    { background: linear-gradient(155deg, #7c3aed, #b026a8 55%, #e0484d); }
+  .art-slots     { background: linear-gradient(155deg, #f97316, #dc2626); }
+  .art-mines     { background: linear-gradient(155deg, #1d4ed8, #38bdf8); }
+  .art-dragon    { background: linear-gradient(155deg, #5b21b6, #a855f7); }
+  .art-cases     { background: linear-gradient(155deg, #0e7490, #22d3ee); }
+  .art-keno      { background: linear-gradient(155deg, #6d28d9, #c026d3); }
+  .art-blackjack { background: linear-gradient(155deg, #b91c1c, #f43f5e); }
+  .art-crash     { background: linear-gradient(155deg, #eab308 35%, #2563eb); }
+  .art-coinflip  { background: linear-gradient(155deg, #f59e0b, #ea580c); }
+  .art-wheel     { background: linear-gradient(155deg, #15803d, #4ade80); }
+  .art-rps       { background: linear-gradient(155deg, #0f766e, #14b8a6 55%, #facc15); }
+
+  #casino-off-banner {
+    display: none; margin: 0 0 18px; padding: 12px 16px;
+    background: rgba(163, 38, 33, 0.15); border: 1px solid rgba(255, 107, 112, 0.35);
+    color: var(--red-text); font-family: var(--mono); font-size: 12px;
+    letter-spacing: 0.1em; text-transform: uppercase; text-align: center;
+  }
+  body.casino-off #casino-off-banner { display: block; }
+  body.casino-off .lobby { opacity: 0.5; filter: grayscale(0.4); }
+</style>
+</head>
+<body>
+  <header>
+    <h1><span>■</span> Casino</h1>
+    <nav class="right" id="site-nav"></nav>
+  </header>
+  <script src="/static/nav.js?v=3"></script>
+
+  <main>
+    <div id="casino-off-banner">🚫 The casino is currently disabled. Games are unavailable right now.</div>
+
+    <div class="lobby-head">
+      <h2 class="overline">All games</h2>
+      <span class="count">11 games · 1 multiplayer</span>
+    </div>
+
+    <div class="lobby">
+      <a class="tile" href="/games#plinko">
+        <div class="art art-plinko">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <g fill="#fff" opacity=".92">
+              <circle cx="22" cy="28" r="5"/><circle cx="50" cy="28" r="5"/><circle cx="78" cy="28" r="5"/>
+              <circle cx="36" cy="52" r="5"/><circle cx="64" cy="52" r="5"/>
+              <circle cx="22" cy="76" r="5"/><circle cx="50" cy="76" r="5"/><circle cx="78" cy="76" r="5"/>
+            </g>
+            <circle cx="50" cy="52" r="10" fill="#fbbf24"/><circle cx="50" cy="52" r="4.5" fill="#b45309"/>
+          </svg>
+          <span class="label"><span class="name">Plinko</span><span class="sub">Originals</span></span>
+        </div>
+        <div class="meta"><i class="dot"></i><span><b data-plays="plinko">—</b> plays · 24h</span></div>
+      </a>
+
+      <a class="tile" href="/games#slots">
+        <div class="art art-slots">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <rect x="10" y="28" width="80" height="46" rx="9" fill="#fff"/>
+            <rect x="16" y="34" width="20" height="34" rx="4" fill="#fde68a"/>
+            <rect x="40" y="34" width="20" height="34" rx="4" fill="#fde68a"/>
+            <rect x="64" y="34" width="20" height="34" rx="4" fill="#fde68a"/>
+            <circle cx="26" cy="51" r="7" fill="#dc2626"/>
+            <circle cx="74" cy="51" r="7" fill="#dc2626"/>
+            <path d="M43 43h14l-8 18" stroke="#dc2626" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="label"><span class="name">Slots</span><span class="sub">Originals</span></span>
+        </div>
+        <div class="meta"><i class="dot"></i><span><b data-plays="slots">—</b> plays · 24h</span></div>
+      </a>
+
+      <a class="tile" href="/games#mines">
+        <div class="art art-mines">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <polygon points="72,40 92,54 72,82 52,54" fill="#34d399"/>
+            <polygon points="72,40 92,54 72,58 52,54" fill="#a7f3d0"/>
+            <circle cx="32" cy="60" r="17" fill="#141419"/>
+            <circle cx="26" cy="54" r="4" fill="#fff" opacity=".28"/>
+            <path d="M40 46c7-7 11-5 13-13" stroke="#fbbf24" stroke-width="4" fill="none" stroke-linecap="round"/>
+            <circle cx="55" cy="30" r="5" fill="#fde047"/>
+          </svg>
+          <span class="label"><span class="name">Mines</span><span class="sub">Originals</span></span>
+        </div>
+        <div class="meta"><i class="dot"></i><span><b data-plays="mines">—</b> plays · 24h</span></div>
+      </a>
+
+      <a class="tile" href="/games#dragon">
+        <div class="art art-dragon">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <path d="M50 12c9 10 14 15 14 23a14 14 0 0 1-28 0c0-8 5-13 14-23Z" fill="#fbbf24"/>
+            <path d="M50 27c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11Z" fill="#fff7ed"/>
+            <g fill="#fff" opacity=".9">
+              <rect x="18" y="58" width="19" height="12" rx="3"/><rect x="63" y="58" width="19" height="12" rx="3"/>
+              <rect x="18" y="76" width="19" height="12" rx="3"/><rect x="40" y="76" width="20" height="12" rx="3"/>
+            </g>
+            <rect x="40" y="58" width="20" height="12" rx="3" fill="#fbbf24"/>
+            <rect x="63" y="76" width="19" height="12" rx="3" fill="#fbbf24"/>
+          </svg>
+          <span class="label"><span class="name">Dragon Tower</span><span class="sub">Originals</span></span>
+        </div>
+        <div class="meta"><i class="dot"></i><span><b data-plays="dragon">—</b> plays · 24h</span></div>
+      </a>
+
+      <a class="tile" href="/games#cases">
+        <div class="art art-cases">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <path d="M50 10 76 44H24Z" fill="#fff" opacity=".22"/>
+            <circle cx="50" cy="30" r="7" fill="#fde047"/>
+            <rect x="22" y="40" width="56" height="11" rx="3" fill="#fff" opacity=".9" transform="rotate(-5 50 45)"/>
+            <rect x="22" y="56" width="56" height="30" rx="5" fill="#fff"/>
+            <rect x="44" y="56" width="12" height="30" fill="#0e7490" opacity=".55"/>
+          </svg>
+          <span class="label"><span class="name">Cases</span><span class="sub">Originals</span></span>
+        </div>
+        <div class="meta"><i class="dot"></i><span><b data-plays="cases">—</b> plays · 24h</span></div>
+      </a>
+
+      <a class="tile" href="/games#keno">
+        <div class="art art-keno">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <g fill="#fff" opacity=".9">
+              <rect x="10" y="18" width="22" height="22" rx="4"/>
+              <rect x="62" y="18" width="22" height="22" rx="4"/>
+              <rect x="36" y="44" width="22" height="22" rx="4"/>
+              <rect x="10" y="70" width="22" height="22" rx="4"/>
+            </g>
+            <rect x="36" y="18" width="22" height="22" rx="4" fill="#fde047"/>
+            <rect x="62" y="70" width="22" height="22" rx="4" fill="#fde047"/>
+            <rect x="36" y="70" width="22" height="22" rx="4" fill="#fff" opacity=".35"/>
+            <rect x="62" y="44" width="22" height="22" rx="4" fill="#fff" opacity=".35"/>
+            <rect x="10" y="44" width="22" height="22" rx="4" fill="#fff" opacity=".35"/>
+          </svg>
+          <span class="label"><span class="name">Keno</span><span class="sub">Originals</span></span>
+        </div>
+        <div class="meta"><i class="dot"></i><span><b data-plays="keno">—</b> plays · 24h</span></div>
+      </a>
+
+      <a class="tile" href="/games#blackjack">
+        <div class="art art-blackjack">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <g transform="rotate(-14 38 56)"><rect x="20" y="30" width="35" height="50" rx="5" fill="#e5e7eb"/></g>
+            <g transform="rotate(10 62 56)">
+              <rect x="45" y="30" width="35" height="50" rx="5" fill="#fff"/>
+              <path d="M62 46l7 9-7 9-7-9Z" fill="#dc2626"/>
+              <path d="M50 36h1.5l2.5 6h-2l-.6-1.6h-2.3L48.5 42h-2Z" fill="#dc2626"/>
+            </g>
+          </svg>
+          <span class="label"><span class="name">Blackjack</span><span class="sub">Originals</span></span>
+        </div>
+        <div class="meta"><i class="dot"></i><span><b data-plays="blackjack">—</b> plays · 24h</span></div>
+      </a>
+
+      <a class="tile" href="/games#crash">
+        <div class="art art-crash">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <path d="M12 84C36 82 58 68 82 22" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round"/>
+            <circle cx="82" cy="22" r="9" fill="#fff"/>
+          </svg>
+          <span class="label"><span class="name">Crash</span><span class="sub">Originals</span></span>
+        </div>
+        <div class="meta"><i class="dot"></i><span><b data-plays="crash">—</b> plays · 24h</span></div>
+      </a>
+
+      <a class="tile" href="/games#coinflip">
+        <div class="art art-coinflip">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <path d="M20 62C26 24 74 24 80 56" stroke="#fff" stroke-width="4" fill="none"
+                  stroke-linecap="round" stroke-dasharray="5 8" opacity=".7"/>
+            <circle cx="50" cy="64" r="21" fill="#fde68a"/>
+            <circle cx="50" cy="64" r="15" fill="#f59e0b"/>
+            <circle cx="50" cy="64" r="6" fill="#fff7ed"/>
+          </svg>
+          <span class="label"><span class="name">Coin Flip</span><span class="sub">Originals</span></span>
+        </div>
+        <div class="meta"><i class="dot"></i><span><b data-plays="coinflip">—</b> plays · 24h</span></div>
+      </a>
+
+      <a class="tile" href="/games#wheel">
+        <div class="art art-wheel">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <circle cx="50" cy="60" r="26" fill="none" stroke="#fff" stroke-width="15"/>
+            <circle cx="50" cy="60" r="26" fill="none" stroke="#064e3b" stroke-width="15"
+                    stroke-dasharray="13.6 13.6" opacity=".8"/>
+            <circle cx="50" cy="60" r="10" fill="#fff"/>
+            <path d="M50 22l7 13H43Z" fill="#fde047"/>
+          </svg>
+          <span class="label"><span class="name">Wheel</span><span class="sub">Originals</span></span>
+        </div>
+        <div class="meta"><i class="dot"></i><span><b data-plays="wheel">—</b> plays · 24h</span></div>
+      </a>
+
+      <a class="tile" href="/games#rps">
+        <div class="art art-rps">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <!-- the three throws, each in its own corner: a rock bottom-left,
+                 a sheet of paper top-right, scissors under it -->
+            <path d="M15 63c0-9 6-16 14-18l10-2c8-2 15 4 16 12l1 8c1 9-6 17-15 17H28c-7 0-13-6-13-13Z" fill="#fff"/>
+            <path d="M22 52c5-4 11-6 17-5l12 2" stroke="#0f766e" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".45"/>
+            <path d="M46 9h29l12 12v36H46Z" fill="#fff"/>
+            <path d="M75 9l12 12H75Z" fill="#0f766e" opacity=".5"/>
+            <g stroke="#fde047" stroke-linecap="round" fill="none">
+              <path d="M55 91 L85 61" stroke-width="6"/>
+              <path d="M85 91 L55 61" stroke-width="6"/>
+              <circle cx="53" cy="93" r="5.5" stroke-width="4"/>
+              <circle cx="87" cy="93" r="5.5" stroke-width="4"/>
+            </g>
+            <circle cx="70" cy="76" r="3" fill="#0f766e"/>
+          </svg>
+          <span class="label"><span class="name long">Rock Paper Scissors</span><span class="sub">Originals</span></span>
+        </div>
+        <div class="meta"><i class="dot"></i><span><b data-plays="rps">—</b> plays · 24h</span></div>
+      </a>
+    </div>
+
+    <script>
+    // Tiles are ordered by play count, busiest first — but the counts come
+    // from /api/casino/lobby, which lands a moment after the page paints, and
+    // reshuffling the grid under someone who just hit refresh reads as broken.
+    // So the last order we saw is kept in localStorage and applied here,
+    // inline, while the grid is still being parsed and before it has ever been
+    // painted; the fetch below then corrects it and saves the new one. A 24h
+    // count barely moves between two page loads, so in practice the cached
+    // order is already the right one and nothing visibly shifts. A first-ever
+    // visit gets the markup order — the same fallback a failed fetch leaves.
+    (() => {
+      const CACHE_KEY = "casino:lobby-order";
+      const lobby = document.querySelector(".lobby");
+
+      // [{tile, game}, ...] in current DOM order
+      const tiles = () => [...lobby.querySelectorAll(".tile")].map(tile => ({
+        tile, game: tile.querySelector("[data-plays]")?.dataset.plays || "",
+      }));
+
+      // A game the order doesn't mention — a tile added to the markup since
+      // the order was cached — sorts to the back rather than vanishing.
+      const apply = (order) => {
+        const rank = (game) => {
+          const i = order.indexOf(game);
+          return i === -1 ? order.length : i;
+        };
+        tiles().sort((a, b) => rank(a.game) - rank(b.game))
+               .forEach(({ tile }) => lobby.appendChild(tile));
+      };
+
+      try {
+        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+        if (Array.isArray(cached)) apply(cached);
+      } catch (e) {}
+
+      // Live-ish activity under each tile. Counts are bets placed in the last
+      // 24h, not people in the room — we have no presence tracking, and a
+      // made-up "playing" number would be a lie. Tiles ship with "—" so a
+      // failed fetch leaves the lobby usable. Only the counts are cached-free:
+      // a stale number would be a wrong number, a stale order is just an order.
+      (async () => {
+        try {
+          const d = await (await fetch("/api/casino/lobby")).json();
+          document.body.classList.toggle("casino-off", !d.casino_enabled);
+          const plays = d.plays || {};
+          for (const [game, n] of Object.entries(plays)) {
+            const el = document.querySelector(`[data-plays="${game}"]`);
+            if (el) el.textContent = n.toLocaleString();
+          }
+          // Stable, so games tied on plays (all of them, on a quiet day) keep
+          // whatever order they're already in instead of jumping around.
+          const order = tiles().map(t => ({ ...t, n: plays[t.game] || 0 }))
+                               .sort((a, b) => b.n - a.n)
+                               .map(t => t.game);
+          apply(order);
+          localStorage.setItem(CACHE_KEY, JSON.stringify(order));
+        } catch (e) {}
+      })();
+    })();
+    </script>
+  </main>
+
+<script>
+// Tile subtitles mirror the channel ("<channel> ORIGINALS"). nav.js already
+// caches /api/me in sessionStorage, so this reads that instead of firing a
+// second request — a first-ever visit just keeps the plain "Originals".
+(() => {
+  let me = null;
+  try { me = JSON.parse(sessionStorage.getItem("me") || "null"); } catch (e) {}
+  if (!me || !me.channel) return;
+  document.querySelectorAll(".tile .sub").forEach(s => { s.textContent = me.channel + " Originals"; });
+})();
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2dbe4ef5ac97029',t:'MTc4NzE3MTE5Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

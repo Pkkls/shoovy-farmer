@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credits · Market</title>
+<link rel="stylesheet" href="/static/theme.css?v=3">
+<style>
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 0 16px; align-items: start; }
+  /* card spacing for the desktop flow — all of it lives above the mobile
+     breakpoint below, which resets it in favour of the flex container's gap */
+  .layout .card { margin-bottom: 16px; }
+  #pf-chart-card, .info-box { margin-bottom: 16px; }
+
+  /* ---- mobile stacking order ---- */
+  /* One column on narrow screens, and the reading order stops matching the
+     desktop column split: the two cards outside .layout (the info box and the
+     portfolio chart) have to interleave with cards from both grid columns.
+     display:contents dissolves the grid and its column wrappers so every card
+     becomes a direct flex item of the tab panel, and `order` sorts them. The
+     panel's own display is only set here, so the tab script's inline
+     display:none still hides it. */
+  @media (max-width: 900px) {
+    [data-tab-panel="stocks"] { display: flex; flex-direction: column; gap: 16px; }
+    .layout, .layout > div { display: contents; }
+    .layout .card, #pf-chart-card, .info-box { margin-bottom: 0; }
+
+    .info-box      { order: 1; }   /* how the market works */
+    #pf-chart-card { order: 2; }   /* portfolio value */
+    #pf-card       { order: 3; }   /* your portfolio */
+    #quote-card    { order: 4; }
+    #tickers-card  { order: 5; }
+    #trade-card    { order: 6; }
+    #mkt-admin     { order: 7; }
+    #news-card     { order: 8; }   /* market news, at the bottom */
+  }
+
+  /* ---- market info box ---- */
+  /* same collapsible as the casino rakeback card: an overline heading with the
+     caret parked out on the right edge. */
+  .info-box > summary {
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer; list-style: none; user-select: none;
+  }
+  .info-box > summary::-webkit-details-marker { display: none; }
+  .info-box > summary::after { content: "▸"; margin-left: auto; color: var(--muted);
+    font-size: 11px; transition: transform 0.15s ease; }
+  .info-box[open] > summary::after { transform: rotate(90deg); }
+  .info-box > summary h2 { margin-bottom: 0; }
+  .info-box .info-body { margin-top: 14px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+  .info-box ul { list-style: none; margin: 8px 0; }
+  .info-box li { padding: 4px 0; }
+  .info-box li .sym { font-family: var(--mono); font-weight: 600; color: var(--ink); }
+  .info-box li .nm { color: var(--dim); }
+
+  /* ---- quote header + chart ---- */
+  .quote-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+  .q-sym { font-size: 20px; font-weight: 600; color: var(--ink); font-family: var(--mono); }
+  .q-name { color: var(--muted); font-size: 13px; }
+  .q-price {
+    font-size: 24px; font-weight: 600; text-align: right; color: var(--ink);
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+  }
+  .pill {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 2px;
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+  }
+  .pill.up { color: var(--green-text); background: rgba(50, 164, 103, 0.15); }
+  .pill.down { color: var(--red-text); background: rgba(205, 66, 70, 0.15); }
+  .q-right { text-align: right; }
+  canvas {
+    width: 100%; display: block; background: var(--inset);
+    border: 1px solid var(--line); border-radius: 2px; margin-top: 10px;
+  }
+
+  .tf { display: flex; gap: 4px; justify-content: flex-end; margin-top: 12px; }
+  .tf button {
+    background: transparent; color: var(--dim);
+    font-size: 12px; font-weight: 500; padding: 4px 10px;
+  }
+  .tf button:hover:not(.active) { background: rgba(143, 153, 168, 0.15); color: var(--ink); }
+  .tf button.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent-line); }
+
+  /* ---- ticker list ---- */
+  .ticker {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 12px; align-items: center;
+    padding: 9px 8px; border-top: 1px solid var(--line); cursor: pointer;
+    font-variant-numeric: tabular-nums; border-radius: 2px;
+  }
+  .ticker:hover { background: rgba(143, 153, 168, 0.1); }
+  .ticker.selected { background: var(--accent-dim); box-shadow: inset 2px 0 0 var(--accent); }
+  .ticker .sym { font-weight: 600; color: var(--ink); font-family: var(--mono); font-size: 13px; }
+  .ticker .nm { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ticker .price { text-align: right; font-family: var(--mono); font-size: 13px; }
+
+  /* ---- market news ---- */
+  .news-row { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  .news-row .when { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .news-empty { color: var(--muted); font-size: 13px; padding: 6px 0; }
+
+  /* ---- streamer bettor breakdown ---- */
+  .bettors-list { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; }
+  .bettors-list .b-opt { color: var(--muted); font-weight: 600; margin-top: 6px; }
+  .bettors-list .b-row { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; padding: 2px 0; }
+
+  /* ---- trade panel ---- */
+  h2 span { color: var(--blue-text); font-family: var(--mono); text-transform: none; letter-spacing: 0; }
+  .seg { display: flex; background: var(--inset); border: 1px solid var(--line); border-radius: 2px; padding: 3px; gap: 3px; }
+  .seg button {
+    flex: 1; background: transparent; color: var(--dim);
+    font-weight: 600; padding: 7px; border-radius: 2px;
+  }
+  .seg button:hover:not(.active) { color: var(--ink); }
+  .seg button#side-buy.active { background: var(--green); color: #fff; }
+  .seg button#side-sell.active { background: var(--red); color: #fff; }
+
+  .t-row { display: flex; justify-content: space-between; align-items: baseline; margin: 14px 0 6px; }
+  .t-label { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+  .t-avail { color: var(--muted); font-size: 12px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  input[type=number] { width: 100%; font-size: 16px; padding: 9px 12px; font-family: var(--mono); }
+
+  .quick { display: flex; gap: 6px; margin-top: 8px; }
+  .quick button {
+    flex: 1; background: #202028; color: var(--dim);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    font-size: 12px; font-weight: 600; padding: 5px 0;
+  }
+  .quick button:hover { background: #2b2b34; color: var(--ink); }
+
+  .est { color: var(--muted); font-size: 13px; margin-top: 12px; min-height: 1.3em; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  .submit { width: 100%; margin-top: 12px; font-weight: 600; padding: 11px; }
+  .submit.buy { background: var(--green); color: #fff; }
+  .submit.buy:hover:not(:disabled) { background: var(--green-hover); }
+  .submit.sell { background: var(--red); color: #fff; }
+  .submit.sell:hover:not(:disabled) { background: var(--red-hover); }
+  .submit:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .hint { margin-top: 10px; }
+
+  /* ---- admin market controls ---- */
+  #mkt-admin .mkt-btns { display: flex; gap: 8px; }
+  #mkt-admin .mkt-btns .btn { flex: 1; white-space: nowrap; }
+
+  /* ---- portfolio ---- */
+  #pf-table { min-width: 480px; }
+  .layout td { font-family: var(--mono); font-size: 12px; }
+  .layout td:first-child { color: var(--ink); }
+  .layout tbody tr { cursor: pointer; }
+  .layout tbody tr:hover td { background: rgba(143, 153, 168, 0.08); }
+
+  /* ============ PREDICTIONS TAB (moved from the old /predictions page) ============ */
+  #pred-panel .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  #pred-panel .page-head h2 { margin-bottom: 0; }
+  #pred-panel .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 16px; align-items: start; margin-bottom: 28px; }
+  #pred-panel .empty { color: var(--muted); padding: 18px 0 26px; font-size: 13px; }
+
+  #pred-panel .market .q { font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1.35; }
+  #pred-panel .market .meta { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 12px; margin: 6px 0 14px; font-variant-numeric: tabular-nums; }
+
+  #pred-panel .opt { border-radius: 2px; padding: 8px 8px 9px; margin: 0 -8px; }
+  #pred-panel .opt.clickable { cursor: pointer; }
+  #pred-panel .opt.clickable:hover { background: rgba(143, 153, 168, 0.08); }
+  #pred-panel .opt.expanded { background: rgba(229, 66, 71, 0.08); }
+  #pred-panel .opt.locked { opacity: 0.45; }
+  #pred-panel .opt-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  #pred-panel .opt-label { font-weight: 500; color: var(--text); min-width: 0; overflow-wrap: anywhere; }
+  #pred-panel .opt-pct { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; color: var(--ink); white-space: nowrap; }
+  #pred-panel .bar { height: 6px; background: var(--inset); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  #pred-panel .bar .fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+  #pred-panel .opt-meta { color: var(--muted); font-size: 11px; margin-top: 5px; font-variant-numeric: tabular-nums; display: flex; gap: 8px; }
+  #pred-panel .you { color: var(--gold); font-weight: 600; }
+  #pred-panel .win-tag { color: var(--green-text); background: rgba(50, 164, 103, 0.15); font-size: 10px; font-weight: 700; letter-spacing: 0.05em; border-radius: 2px; padding: 1px 6px; vertical-align: middle; }
+  #pred-panel .market.resolved .opt.loser { opacity: 0.55; }
+
+  #pred-panel .bet-panel { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+  #pred-panel .bet-row { display: flex; gap: 8px; }
+  #pred-panel .bet-row input { flex: 1; min-width: 0; font-family: var(--mono); }
+  #pred-panel .quick { display: flex; gap: 6px; margin-top: 8px; }
+  #pred-panel .quick button {
+    flex: 1; background: #202028; color: var(--dim);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    font-size: 12px; font-weight: 600; padding: 4px 0;
+  }
+  #pred-panel .quick button:hover { background: #2b2b34; color: var(--ink); }
+  #pred-panel .est { color: var(--muted); font-size: 12px; margin-top: 8px; min-height: 1.3em; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  #pred-panel .est b { color: var(--green-text); font-weight: 600; }
+  #pred-panel .result-line { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; }
+  #pred-panel .admin-bar { display: flex; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  #pred-panel .admin-bar select { flex: 1; min-width: 120px; font-size: 13px; }
+  #pred-panel .admin-bar .btn { font-size: 12px; padding: 6px 10px; }
+  #pred-panel .hint { margin-top: 8px; }
+
+  /* create-prediction modal (lives outside the tab panels) */
+  #pred-overlay {
+    position: fixed; inset: 0; background: rgba(17, 20, 24, 0.7);
+    display: none; align-items: flex-start; justify-content: center; z-index: 50;
+    padding: 60px 16px 16px;
+  }
+  #pred-overlay.show { display: flex; }
+  #pred-overlay .modal { width: 100%; max-width: 440px; }
+  #pred-overlay .modal h3 { color: var(--ink); font-size: 15px; margin-bottom: 14px; }
+  #pred-overlay .modal label { display: block; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; margin: 12px 0 6px; }
+  #pred-overlay .modal input { width: 100%; font-size: 14px; padding: 7px 10px; }
+  #pred-overlay .modal .opt-input { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+  #pred-overlay .modal .opt-input button { background: none; color: var(--muted); font-size: 16px; padding: 2px 6px; }
+  #pred-overlay .modal .opt-input button:hover { color: var(--red-text); }
+  #pred-overlay .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+  #add-option { background: none; color: var(--blue-text); font-size: 13px; padding: 4px 0; }
+</style>
+</head>
+<body>
+  <header>
+    <h1><span>■</span> Market</h1>
+    <nav class="right" id="site-nav"></nav>
+  </header>
+  <script src="/static/nav.js?v=3"></script>
+  <script src="/static/sounds.js"></script>
+
+  <main>
+    <nav class="tabs">
+      <button data-tab="stocks">Stocks</button>
+      <button data-tab="predictions">Predictions</button>
+    </nav>
+
+    <div data-tab-panel="stocks">
+    <details class="card info-box">
+      <summary><h2>How the market works</h2></summary>
+      <div class="info-body">
+        Five fake stocks track what's happening on the stream — watch the action, guess where it's headed, and trade your credits on it.
+        <ul>
+          <li><span class="sym">$STRMR</span> <span class="nm">(The Streamer)</span> — rides the stream itself: subs, gifted subs, and KICKs send it up, going live gives it a bump, and it dips when the stream ends.</li>
+          <li><span class="sym">$CHAT</span> <span class="nm">(Chat Hype Index)</span> — powered by chat activity: the faster chat is moving, the higher it climbs.</li>
+          <li><span class="sym">$GAMBA</span> <span class="nm">(Degeneracy Inc.)</span> — tracks how much chat is gambling: big betting volume across the casino games, duels, and predictions pumps it.</li>
+          <li><span class="sym">$WINS</span> <span class="nm">(W Corp)</span> — moons when chat beats the house and wins big; dumps when the house takes chat's money.</li>
+          <li><span class="sym">$LOSS</span> <span class="nm">(L Holdings)</span> — the evil twin of $WINS: it pumps when chat is losing and dumps when chat is winning.</li>
+        </ul>
+        And for all five: prices wiggle randomly on their own, big buys and sells move the price directly, and everything slowly drifts back to normal after a pump or dump.
+      </div>
+    </details>
+    <section class="card" id="pf-chart-card" style="display:none;">
+      <div class="quote-head">
+        <div>
+          <h2 style="margin-bottom:2px;">Portfolio value</h2>
+          <div class="q-name">Credits + stock holdings</div>
+        </div>
+        <div class="q-right">
+          <div class="q-price" id="pf-value"></div>
+          <span class="pill up" id="pf-change"></span>
+        </div>
+      </div>
+      <canvas id="pf-chart" width="680" height="150"></canvas>
+    </section>
+    <div class="layout">
+      <div>
+        <section class="card" id="quote-card">
+          <div class="quote-head">
+            <div>
+              <div class="q-sym" id="q-sym">—</div>
+              <div class="q-name" id="q-name"></div>
+              <div class="q-name" id="q-day" style="margin-top:2px; font-family:var(--mono); font-variant-numeric:tabular-nums;"></div>
+            </div>
+            <div class="q-right">
+              <div class="q-price" id="q-price"></div>
+              <span class="pill up" id="q-change"></span>
+            </div>
+          </div>
+          <div class="tf" id="tf"></div>
+          <canvas id="chart" width="680" height="240"></canvas>
+        </section>
+
+        <section class="card" id="tickers-card">
+          <h2>Tickers</h2>
+          <div id="tickers"></div>
+        </section>
+
+        <section class="card" id="news-card">
+          <h2>Market news</h2>
+          <div id="news"><div class="news-empty">Quiet out there…</div></div>
+        </section>
+      </div>
+
+      <div>
+        <section class="card" id="trade-card">
+          <h2>Trade <span id="trade-sym"></span></h2>
+          <div class="hint" id="trade-login" style="display:none;">
+            <a href="/auth/login" style="color:var(--blue-text);">Log in with Kick</a> to trade.
+          </div>
+          <div id="trade-ui" style="display:none;">
+            <div class="seg">
+              <button id="side-buy" class="active">Buy</button>
+              <button id="side-sell">Sell</button>
+            </div>
+            <div class="t-row">
+              <span class="t-label" id="amt-label">Amount (credits)</span>
+              <span class="t-avail" id="avail"></span>
+            </div>
+            <input type="number" id="trade-amount" min="0" step="any" placeholder="0">
+            <div class="quick" id="quick"></div>
+            <div class="est" id="est">&nbsp;</div>
+            <button class="submit buy" id="trade-btn">Buy</button>
+            <div class="hint" id="trade-hint"></div>
+          </div>
+        </section>
+
+        <section class="card" id="mkt-admin" style="display:none;">
+          <h2>Market controls <span id="mkt-admin-sym"></span></h2>
+          <div class="mkt-btns">
+            <button class="btn danger" data-pct="-15">-15%</button>
+            <button class="btn danger" data-pct="-5">-5%</button>
+            <button class="btn success" data-pct="5">+5%</button>
+            <button class="btn success" data-pct="15">+15%</button>
+          </div>
+          <div class="hint" id="mkt-admin-hint">Impulses play out over the next few price ticks (~30s each) and apply to the selected ticker. You can also use !pump / !dump in chat.</div>
+        </section>
+
+        <section class="card" id="pf-card">
+          <h2>Your portfolio</h2>
+          <div class="table-wrap">
+            <table id="pf-table">
+              <thead><tr><th>Ticker</th><th class="num">Shares</th><th class="num">Avg</th><th class="num">Now</th><th class="num">Value</th><th class="num">P/L</th></tr></thead>
+              <tbody id="portfolio"></tbody>
+            </table>
+          </div>
+          <div class="hint" id="pf-empty" style="display:none;"></div>
+        </section>
+      </div>
+    </div>
+    </div>
+
+    <div data-tab-panel="predictions" id="pred-panel">
+      <div class="page-head">
+        <h2 class="overline">Open predictions</h2>
+        <button class="btn primary" id="new-btn" style="display:none;">+ New prediction</button>
+      </div>
+      <div class="empty" id="open-empty" style="display:none;"></div>
+      <div class="grid" id="open-list"></div>
+
+      <h2 class="overline">Resolved</h2>
+      <div class="empty" id="resolved-empty" style="display:none;">Nothing resolved yet.</div>
+      <div class="grid" id="resolved-list"></div>
+    </div>
+  </main>
+
+  <!-- create prediction modal (outside the tab panels so tab hiding can't swallow it) -->
+  <div id="pred-overlay">
+    <div class="card modal">
+      <h3>New prediction</h3>
+      <label>Question</label>
+      <input id="new-question" maxlength="200" placeholder="Will we win the next game?">
+      <label>Lock betting after (minutes)</label>
+      <input id="new-lock" type="number" min="0" placeholder="blank or 0 = lock manually">
+      <label>Outcomes (2–6)</label>
+      <div id="option-inputs"></div>
+      <button id="add-option" type="button">+ Add outcome</button>
+      <div class="hint err" id="modal-hint"></div>
+      <div class="modal-actions">
+        <button class="btn" id="modal-cancel">Cancel</button>
+        <button class="btn primary" id="modal-create">Create</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+/* ================= TABS ================= */
+(() => {
+  const buttons = document.querySelectorAll(".tabs button");
+  const names = [...buttons].map(b => b.dataset.tab);
+  function show(name) {
+    buttons.forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+    document.querySelectorAll("[data-tab-panel]").forEach(s => {
+      s.style.display = s.dataset.tabPanel === name ? "" : "none";
+    });
+    history.replaceState(null, "", "#" + name);
+  }
+  buttons.forEach(b => b.onclick = () => show(b.dataset.tab));
+  const initial = location.hash.slice(1);
+  show(names.includes(initial) ? initial : names[0]);
+  // hash edited while already on the page (e.g. a #tab link) still switches
+  window.addEventListener("hashchange", () => {
+    const name = location.hash.slice(1);
+    if (names.includes(name)) show(name);
+  });
+})();
+
+/* ================= STOCKS ================= */
+const st = {
+  sel: null, side: "buy",
+  quotes: [], pf: [], bal: 0, fee: 1, depth: 250000, logged: false, admin: false,
+  sellAll: false, tf: 60, tradingEnabled: true,
+};
+
+// chart timeframes (label, minutes)
+const TIMEFRAMES = [["30m", 30], ["1h", 60], ["4h", 240], ["12h", 720], ["24h", 1440]];
+(() => {
+  const box = $("tf");
+  for (const [label, minutes] of TIMEFRAMES) {
+    const b = document.createElement("button");
+    b.textContent = label;
+    b.classList.toggle("active", minutes === st.tf);
+    b.onclick = () => {
+      st.tf = minutes;
+      [...box.children].forEach(x => x.classList.toggle("active", x === b));
+      refresh(); // re-fetch quotes so change % matches the new timeframe, then redraws
+    };
+    box.appendChild(b);
+  }
+})();
+
+const quote = () => st.quotes.find(q => q.symbol === st.sel);
+const holding = () => st.pf.find(h => h.symbol === st.sel);
+const fmt = (n) => Math.floor(n).toLocaleString();
+
+async function refresh() {
+  const tf = st.tf;
+  const d = await (await fetch("/api/stocks?minutes=" + tf)).json();
+  if (tf !== st.tf) return; // timeframe switched mid-fetch; a fresher refresh is coming
+  st.logged = d.logged_in;
+  st.admin = d.is_admin;
+  st.tradingEnabled = d.trading_enabled;
+  st.quotes = d.quotes;
+  st.fee = d.fee_pct !== undefined ? d.fee_pct : 1;
+  if (d.depth) st.depth = d.depth;
+  st.news = d.news || [];
+  st.pf = d.portfolio || [];
+  st.nw = d.networth_history || [];
+  if (d.balance !== undefined) {
+    st.bal = d.balance;
+    $("balance").textContent = d.balance.toLocaleString() + " credits";
+  }
+  if (!st.sel || !quote()) st.sel = st.quotes.length ? st.quotes[0].symbol : null;
+  renderAll();
+  drawChart();
+}
+
+function select(sym) {
+  if (sym === st.sel) return;
+  st.sel = sym;
+  st.sellAll = false;
+  renderAll();
+  drawChart();
+}
+
+function renderAll() {
+  renderPfChart();
+  renderHead();
+  renderTickers();
+  renderNews();
+  renderPortfolio();
+  renderTrade();
+  renderMktAdmin();
+}
+
+/* ---------- portfolio value over time (net-worth snapshots per market tick) ---------- */
+function renderPfChart() {
+  const card = $("pf-chart-card");
+  const cutoff = Date.now() / 1000 - st.tf * 60;
+  const nw = (st.nw || []).filter(p => p[0] >= cutoff);
+  if (!st.logged || nw.length < 2) { card.style.display = "none"; return; }
+  card.style.display = "";
+
+  const vals = nw.map(p => p[1]);
+  const first = vals[0], last = vals[vals.length - 1];
+  $("pf-value").textContent = fmt(last);
+  changePill($("pf-change"), first > 0 ? (last - first) / first * 100 : 0);
+
+  const cv = $("pf-chart"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+  let min = Math.min(...vals), max = Math.max(...vals);
+  const pad = (max - min) * 0.1 || max * 0.01 || 1;
+  min = Math.max(0, min - pad); max += pad;
+  const span = max - min;
+  const PL = 10, PR = 72, PT = 10, PB = 10;
+  const px = (i) => PL + i / (vals.length - 1) * (W - PL - PR);
+  const py = (v) => PT + (1 - (v - min) / span) * (H - PT - PB);
+
+  ctx.font = "11px ui-monospace, monospace";
+  ctx.textBaseline = "middle";
+  for (let g = 0; g <= 3; g++) {
+    const v = min + span * g / 3;
+    const y = py(v);
+    ctx.strokeStyle = "#24242a";
+    ctx.beginPath(); ctx.moveTo(PL, y); ctx.lineTo(W - PR + 6, y); ctx.stroke();
+    ctx.fillStyle = "#8f99a8";
+    ctx.fillText(Math.round(v).toLocaleString(), W - PR + 10, y);
+  }
+
+  const rising = last >= first;
+  const color = rising ? "#32a467" : "#e76a6e";
+  const grad = ctx.createLinearGradient(0, PT, 0, H - PB);
+  grad.addColorStop(0, rising ? "rgba(50,164,103,0.18)" : "rgba(231,106,110,0.18)");
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  vals.forEach((v, i) => i ? ctx.lineTo(px(i), py(v)) : ctx.moveTo(px(0), py(v)));
+  ctx.lineTo(px(vals.length - 1), H - PB);
+  ctx.lineTo(px(0), H - PB);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  vals.forEach((v, i) => i ? ctx.lineTo(px(i), py(v)) : ctx.moveTo(px(0), py(v)));
+  ctx.stroke();
+
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(px(vals.length - 1), py(last), 3.5, 0, Math.PI * 2); ctx.fill();
+}
+
+/* ---------- admin market controls (streamer only) ---------- */
+function renderMktAdmin() {
+  const card = $("mkt-admin");
+  if (!st.admin) { card.style.display = "none"; return; }
+  card.style.display = "";
+  $("mkt-admin-sym").textContent = st.sel ? "$" + st.sel : "";
+}
+
+document.querySelectorAll("#mkt-admin [data-pct]").forEach(btn => {
+  btn.onclick = async () => {
+    if (!st.sel) return;
+    const hint = $("mkt-admin-hint");
+    const r = await fetch("/api/admin/market/impulse", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ symbol: st.sel, pct: btn.dataset.pct })
+    });
+    hint.textContent = r.ok
+      ? `$${st.sel} impulse ${btn.dataset.pct}% queued`
+      : "Failed to queue impulse";
+  };
+});
+
+function ago(ts) {
+  const s = Math.max(0, Math.floor(Date.now() / 1000 - ts));
+  if (s < 60) return s + "s";
+  if (s < 3600) return Math.floor(s / 60) + "m";
+  if (s < 86400) return Math.floor(s / 3600) + "h";
+  return Math.floor(s / 86400) + "d";
+}
+
+function renderNews() {
+  const box = $("news");
+  box.innerHTML = "";
+  const items = (st.news || []).slice(0, 5);
+  if (!items.length) {
+    box.innerHTML = '<div class="news-empty">Quiet out there…</div>';
+    return;
+  }
+  for (const n of items) {
+    const row = document.createElement("div");
+    row.className = "news-row";
+    const text = document.createElement("span");
+    text.textContent = n.headline;
+    const when = document.createElement("span");
+    when.className = "when";
+    when.textContent = ago(n.created_at);
+    row.append(text, when);
+    box.appendChild(row);
+  }
+}
+
+function changePill(el, pct) {
+  const label = (TIMEFRAMES.find(([, m]) => m === st.tf) || ["1h"])[0];
+  el.className = "pill " + (pct >= 0 ? "up" : "down");
+  el.textContent = (pct >= 0 ? "+" : "") + pct.toFixed(1) + "% · " + label;
+}
+
+function renderHead() {
+  const q = quote();
+  if (!q) return;
+  $("q-sym").textContent = "$" + q.symbol;
+  $("q-name").textContent = q.name;
+  $("q-price").textContent = q.price.toFixed(2);
+  changePill($("q-change"), q.change_pct);
+  $("q-day").textContent = q.day_low !== undefined
+    ? `24h ${q.day_low.toFixed(2)} – ${q.day_high.toFixed(2)} · vol ${fmt(q.volume)}`
+    : "";
+}
+
+function renderTickers() {
+  const box = $("tickers");
+  box.innerHTML = "";
+  for (const q of st.quotes) {
+    const row = document.createElement("div");
+    row.className = "ticker" + (q.symbol === st.sel ? " selected" : "");
+    const name = document.createElement("span");
+    name.innerHTML = `<span class="sym">$${q.symbol}</span> <span class="nm">${q.name}</span>`;
+    const price = document.createElement("span");
+    price.className = "price";
+    price.textContent = q.price.toFixed(2);
+    const pill = document.createElement("span");
+    changePill(pill, q.change_pct);
+    row.append(name, price, pill);
+    row.onclick = () => select(q.symbol);
+    box.appendChild(row);
+  }
+}
+
+function renderPortfolio() {
+  const body = $("portfolio");
+  const empty = $("pf-empty");
+  body.innerHTML = "";
+  if (!st.logged) {
+    $("pf-table").style.display = "none";
+    empty.style.display = "block";
+    empty.textContent = "Log in to see your holdings.";
+    return;
+  }
+  if (!st.pf.length) {
+    $("pf-table").style.display = "none";
+    empty.style.display = "block";
+    empty.textContent = "You own no shares yet — pick a ticker and buy.";
+    return;
+  }
+  $("pf-table").style.display = "";
+  empty.style.display = "none";
+  for (const h of st.pf) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>$${h.symbol}</td><td class="num">${h.shares.toFixed(2)}</td>
+      <td class="num">${h.avg_cost.toFixed(2)}</td><td class="num">${h.price.toFixed(2)}</td>
+      <td class="num">${h.value.toFixed(0)}</td>
+      <td class="num ${h.pl >= 0 ? "up" : "down"}">${h.pl >= 0 ? "+" : ""}${h.pl.toFixed(0)} (${h.pl_pct >= 0 ? "+" : ""}${h.pl_pct.toFixed(1)}%)</td>`;
+    tr.onclick = () => select(h.symbol);
+    body.appendChild(tr);
+  }
+}
+
+/* ---------- trade panel ---------- */
+
+function renderTrade() {
+  $("trade-sym").textContent = st.sel ? "$" + st.sel : "";
+  if (!st.logged) {
+    $("trade-login").style.display = "block";
+    $("trade-ui").style.display = "none";
+    return;
+  }
+  $("trade-login").style.display = "none";
+  $("trade-ui").style.display = "block";
+
+  const tradingOff = st.tradingEnabled === false;
+  const buy = st.side === "buy";
+  const h = holding();
+  $("side-buy").classList.toggle("active", buy);
+  $("side-sell").classList.toggle("active", !buy);
+  // Master switch: when trading is off, lock every control so users can't
+  // buy or sell. The backend rejects trades too, this just matches the UI.
+  $("side-buy").disabled = tradingOff;
+  $("side-sell").disabled = tradingOff;
+  $("trade-amount").disabled = tradingOff;
+  $("amt-label").textContent = buy ? "Amount (credits)" : "Shares";
+  $("avail").textContent = buy
+    ? "Balance: " + st.bal.toLocaleString()
+    : "You own: " + (h ? h.shares.toFixed(2) : "0");
+
+  const quick = $("quick");
+  quick.innerHTML = "";
+  const opts = buy
+    ? [["10%", 0.10], ["25%", 0.25], ["50%", 0.50], ["Max", 1]]
+    : [["25%", 0.25], ["50%", 0.50], ["75%", 0.75], ["All", 1]];
+  for (const [label, frac] of opts) {
+    const b = document.createElement("button");
+    b.textContent = label;
+    b.disabled = tradingOff;
+    b.onclick = () => {
+      st.sellAll = !buy && frac === 1;
+      if (buy) {
+        $("trade-amount").value = Math.floor(st.bal * frac);
+      } else {
+        $("trade-amount").value = h ? +(h.shares * frac).toFixed(2) : 0;
+      }
+      updateEst();
+    };
+    quick.appendChild(b);
+  }
+
+  const btn = $("trade-btn");
+  btn.textContent = (buy ? "Buy" : "Sell") + (st.sel ? " $" + st.sel : "");
+  btn.className = "submit " + (buy ? "buy" : "sell");
+  btn.disabled = tradingOff || (!buy && !h);
+  if (tradingOff) $("trade-hint").textContent = "🚫 The stock market is currently disabled.";
+  updateEst();
+}
+
+function updateEst() {
+  const q = quote();
+  const v = Number($("trade-amount").value);
+  const est = $("est");
+  if (!q || !(v > 0)) { est.innerHTML = "&nbsp;"; return; }
+  // mirrors the server's AMM math: trades execute through their own impact
+  const D = st.depth, p = q.price;
+  const priceLine = (np) => {
+    const pct = (np - p) / p * 100;
+    return `price ${p.toFixed(2)} → ${np.toFixed(2)} ` +
+           `<span class="${pct >= 0 ? "up" : "down"}">(${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%)</span>`;
+  };
+  if (st.side === "buy") {
+    const shares = D / p * (1 - Math.exp(-Math.min(v / D, 50)));
+    const newPrice = p * Math.exp(Math.min(v / D, 50));
+    est.innerHTML = "≈ " + shares.toFixed(2) + " shares @ " + (v / shares).toFixed(2)
+      + " avg<br>" + priceLine(newPrice);
+  } else {
+    const gross = D * Math.log(1 + v * p / D);
+    const newPrice = p / (1 + v * p / D);
+    const proceeds = Math.floor(gross * (1 - st.fee / 100));
+    est.innerHTML = "≈ " + fmt(proceeds) + " credits after " + st.fee + "% fee<br>"
+      + priceLine(newPrice);
+  }
+}
+
+$("trade-amount").addEventListener("input", () => { st.sellAll = false; updateEst(); });
+$("side-buy").onclick = () => { if (st.side !== "buy") { st.side = "buy"; $("trade-amount").value = ""; renderTrade(); } };
+$("side-sell").onclick = () => { if (st.side !== "sell") { st.side = "sell"; $("trade-amount").value = ""; renderTrade(); } };
+
+$("trade-btn").onclick = async () => {
+  const hint = $("trade-hint");
+  const body = { side: st.side, symbol: st.sel };
+  if (st.side === "buy") {
+    body.amount = Math.floor(Number($("trade-amount").value));
+  } else {
+    const h = holding();
+    const v = Number($("trade-amount").value);
+    body.shares = (st.sellAll || (h && v >= h.shares - 0.01)) ? "all" : String(v);
+  }
+  const r = await fetch("/api/stocks/trade", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  });
+  const data = await r.json();
+  hint.className = "hint " + (r.ok ? "ok" : "err");
+  hint.textContent = r.ok ? data.message : data.error;
+  if (r.ok && window.sfx) sfx.cash();
+  if (r.ok) {
+    $("trade-amount").value = "";
+    st.sellAll = false;
+    refresh();
+  }
+};
+
+/* ---------- chart ---------- */
+
+async function drawChart() {
+  const sym = st.sel, tf = st.tf;
+  if (!sym) return;
+  const data = await (await fetch("/api/stocks/history?symbol=" + sym + "&minutes=" + tf)).json();
+  if (sym !== st.sel || tf !== st.tf) return; // user switched ticker/timeframe mid-fetch
+  const cv = $("chart"), ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+  const hist = data.history;
+  if (hist.length < 2) {
+    ctx.fillStyle = "#8f99a8"; ctx.font = "13px ui-monospace, monospace";
+    ctx.fillText("Chart appears after a few price ticks…", 16, 40);
+    return;
+  }
+  const prices = hist.map(p => p[1]);
+  let min = Math.min(...prices), max = Math.max(...prices);
+  const pad = (max - min) * 0.08 || max * 0.01 || 1;
+  min -= pad; max += pad;
+  const span = max - min;
+  const PL = 10, PR = 64, PT = 10, PB = 10;
+  const px = (i) => PL + i / (hist.length - 1) * (W - PL - PR);
+  const py = (v) => PT + (1 - (v - min) / span) * (H - PT - PB);
+
+  // gridlines + right-side price labels
+  ctx.font = "11px ui-monospace, monospace";
+  ctx.textBaseline = "middle";
+  for (let g = 0; g <= 3; g++) {
+    const v = min + span * g / 3;
+    const y = py(v);
+    ctx.strokeStyle = "#24242a";
+    ctx.beginPath(); ctx.moveTo(PL, y); ctx.lineTo(W - PR + 6, y); ctx.stroke();
+    ctx.fillStyle = "#8f99a8";
+    ctx.fillText(v.toFixed(2), W - PR + 10, y);
+  }
+
+  const rising = prices[prices.length - 1] >= prices[0];
+  const color = rising ? "#32a467" : "#e76a6e";
+
+  // gradient fill under the line
+  const grad = ctx.createLinearGradient(0, PT, 0, H - PB);
+  grad.addColorStop(0, rising ? "rgba(50,164,103,0.18)" : "rgba(231,106,110,0.18)");
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  hist.forEach((p, i) => i ? ctx.lineTo(px(i), py(p[1])) : ctx.moveTo(px(0), py(p[1])));
+  ctx.lineTo(px(hist.length - 1), H - PB);
+  ctx.lineTo(px(0), H - PB);
+  ctx.closePath();
+  ctx.fill();
+
+  // price line
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  hist.forEach((p, i) => i ? ctx.lineTo(px(i), py(p[1])) : ctx.moveTo(px(0), py(p[1])));
+  ctx.stroke();
+
+  // last price marker
+  const lastX = px(hist.length - 1), lastY = py(prices[prices.length - 1]);
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(lastX, lastY, 3.5, 0, Math.PI * 2); ctx.fill();
+}
+
+refresh();
+setInterval(refresh, 15000);
+
+/* ================= PREDICTIONS (moved from the old /predictions page) ================= */
+(() => {
+const esc = (s) => String(s).replace(/[&<>"']/g,
+  (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+const fmt = (n) => Math.floor(n).toLocaleString();
+
+const COLORS = ["#32a467", "#e76a6e", "#4c90f0", "#ec9a3c", "#bd6bbd", "#13c9ba"];
+
+const st = {
+  data: { open: [], resolved: [] },
+  logged: false, admin: false, bal: 0,
+  expanded: null,   // "predictionId:optionId" of the open bet panel
+  amount: "",       // preserved across re-renders
+  hints: {},        // predictionId -> {text, ok} feedback messages
+  resolveSel: {},   // predictionId -> option id picked in the resolve dropdown
+};
+
+async function refresh() {
+  const d = await (await fetch("/api/predictions")).json();
+  st.data = d;
+  st.logged = d.logged_in;
+  st.admin = d.is_admin;
+  if (d.balance !== undefined) {
+    st.bal = d.balance;
+    $("balance").textContent = d.balance.toLocaleString() + " credits";
+  }
+  render();
+}
+
+function render() {
+  // don't yank the input out from under someone mid-typing on a poll refresh,
+  // or the resolve dropdown out from under the streamer (buttons are fine —
+  // their own actions trigger the refresh)
+  const active = document.activeElement;
+  if (active && (active.id === "bet-amount" || active.closest?.(".modal")
+                 || (active.tagName === "SELECT" && active.closest?.(".admin-bar")))) return;
+
+  $("new-btn").style.display = st.admin ? "" : "none";
+
+  const open = st.data.open || [];
+  $("open-empty").style.display = open.length ? "none" : "block";
+  $("open-empty").textContent = st.admin
+    ? "No open predictions — create one!"
+    : "No open predictions right now.";
+  const openBox = $("open-list");
+  openBox.innerHTML = "";
+  for (const p of open) openBox.appendChild(marketCard(p, true));
+
+  const resolved = st.data.resolved || [];
+  $("resolved-empty").style.display = resolved.length ? "none" : "block";
+  const resBox = $("resolved-list");
+  resBox.innerHTML = "";
+  for (const p of resolved) resBox.appendChild(marketCard(p, false));
+}
+
+function marketCard(p, isOpen) {
+  const card = document.createElement("section");
+  card.className = "card market" + (isOpen ? "" : " resolved");
+
+  const when = new Date((p.resolved_at || p.created_at) * 1000)
+    .toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  card.innerHTML = `
+    <div class="q">${esc(p.question)}</div>
+    <div class="meta">
+      <span>${fmt(p.total)} credits bet</span><span>·</span><span>${when}</span>
+      ${isOpen && p.locked ? '<span class="tag" style="color:var(--red-text)">🔒 LOCKED</span>' : ""}
+      ${isOpen && !p.locked && p.locks_at
+        ? `<span>· locks in ${Math.max(1, Math.round((p.locks_at - Date.now() / 1000) / 60))}m</span>` : ""}
+      ${isOpen ? "" : '<span class="tag">RESOLVED</span>'}
+    </div>`;
+
+  // one bet per prediction: once you've bet, every option locks
+  const myOpt = st.logged ? p.options.find((o) => o.your_bet > 0) : null;
+  const isLocked = isOpen && p.locked;
+
+  p.options.forEach((o, i) => {
+    const isWinner = !isOpen && o.id === p.winning_option_id;
+    const bettable = isOpen && st.logged && !myOpt && !isLocked;
+    // parimutuel payout if this option wins: the whole pool split pro-rata
+    const mult = o.pool > 0 ? (p.total / o.pool).toFixed(2) : null;
+    const opt = document.createElement("div");
+    opt.className = "opt"
+      + (bettable ? " clickable" : "")
+      + (isOpen && st.logged && ((myOpt && !o.your_bet) || (isLocked && !o.your_bet)) ? " locked" : "")
+      + (!isOpen && !isWinner ? " loser" : "")
+      + (st.expanded === p.id + ":" + o.id ? " expanded" : "");
+    opt.innerHTML = `
+      <div class="opt-top">
+        <span class="opt-label">${esc(o.label)}
+          ${isWinner ? '<span class="win-tag">✓ WINNER</span>' : ""}
+        </span>
+        <span class="opt-pct">${o.pct.toFixed(1)}%</span>
+      </div>
+      <div class="bar"><div class="fill" style="width:${o.pct}%;background:${COLORS[i % COLORS.length]}"></div></div>
+      <div class="opt-meta">
+        <span>${fmt(o.pool)} credits</span>
+        <span>${o.bettors} bettor${o.bettors === 1 ? "" : "s"}</span>
+        ${p.total > 0 ? `<span>pays ×${mult ?? "—"}</span>` : ""}
+        ${o.your_bet ? `<span class="you">You: ${fmt(o.your_bet)}</span>` : ""}
+      </div>`;
+    if (bettable) {
+      opt.onclick = (e) => {
+        if (e.target.closest(".bet-panel")) return; // clicks inside the panel don't toggle
+        const key = p.id + ":" + o.id;
+        st.expanded = st.expanded === key ? null : key;
+        st.amount = "";
+        render();
+      };
+      if (st.expanded === p.id + ":" + o.id) opt.appendChild(betPanel(p, o));
+    }
+    card.appendChild(opt);
+  });
+
+  if (isOpen && myOpt) {
+    const note = document.createElement("div");
+    note.className = "hint";
+    note.textContent = `You bet ${fmt(myOpt.your_bet)} on “${myOpt.label}” — locked in until it resolves.`;
+    card.appendChild(note);
+  }
+
+  if (isOpen && !st.logged) {
+    const login = document.createElement("div");
+    login.className = "hint";
+    login.innerHTML = '<a href="/auth/login" style="color:var(--blue-text);">Log in with Kick</a> to bet.';
+    card.appendChild(login);
+  }
+
+  if (!isOpen) {
+    const line = resultLine(p);
+    if (line) card.appendChild(line);
+  }
+
+  if (st.admin && isOpen) card.appendChild(adminBar(p));
+  if (st.admin && !isOpen) card.appendChild(adminDeleteBar(p));
+
+  const hint = st.hints[p.id];
+  if (hint) {
+    const el = document.createElement("div");
+    el.className = "hint " + (hint.ok ? "ok" : "err");
+    el.textContent = hint.text;
+    card.appendChild(el);
+  }
+  return card;
+}
+
+/* what happened to *your* stake on a resolved market */
+function resultLine(p) {
+  const bet = p.options.reduce((s, o) => s + o.your_bet, 0);
+  if (!bet) return null;
+  const payout = p.options.reduce((s, o) => s + o.your_payout, 0);
+  const el = document.createElement("div");
+  el.className = "result-line";
+  const won = p.options.some((o) => o.id === p.winning_option_id && o.your_payout > 0);
+  if (won) {
+    el.innerHTML = `You bet ${fmt(bet)} and won <b class="up">+${fmt(payout)}</b> credits`;
+  } else if (payout > 0) {
+    el.innerHTML = `Your ${fmt(bet)} credits were <b>refunded</b>`;
+  } else {
+    el.innerHTML = `You bet ${fmt(bet)} and <b class="down">lost</b>`;
+  }
+  return el;
+}
+
+/* ---------- betting ---------- */
+
+function betPanel(p, o) {
+  const panel = document.createElement("div");
+  panel.className = "bet-panel";
+  panel.innerHTML = `
+    <div class="bet-row">
+      <input type="number" id="bet-amount" min="1" step="1" placeholder="Amount"
+             value="${esc(st.amount)}">
+      <button class="btn success" id="bet-btn">Bet</button>
+    </div>
+    <div class="quick" id="bet-quick"></div>
+    <div class="est" id="bet-est">Balance: ${fmt(st.bal)}</div>`;
+
+  const input = panel.querySelector("#bet-amount");
+  const est = panel.querySelector("#bet-est");
+
+  const updateEst = () => {
+    st.amount = input.value;
+    const a = Math.floor(Number(input.value));
+    if (!(a > 0)) { est.textContent = "Balance: " + fmt(st.bal); return; }
+    // parimutuel: your bet joins the pools, winners split everything pro-rata
+    const payout = Math.floor(a * (p.total + a) / (o.pool + a));
+    est.innerHTML = `To win: <b>${fmt(payout)}</b> (x${(payout / a).toFixed(2)}) · Balance: ${fmt(st.bal)}`;
+  };
+  input.addEventListener("input", updateEst);
+  updateEst();
+
+  const quick = panel.querySelector("#bet-quick");
+  for (const [label, frac] of [["+100", null], ["10%", 0.10], ["25%", 0.25], ["Max", 1]]) {
+    const b = document.createElement("button");
+    b.textContent = label;
+    b.onclick = () => {
+      input.value = frac === null
+        ? (Math.floor(Number(input.value)) || 0) + 100
+        : Math.max(1, Math.floor(st.bal * frac));
+      updateEst();
+    };
+    quick.appendChild(b);
+  }
+
+  panel.querySelector("#bet-btn").onclick = async () => {
+    const amount = Math.floor(Number(input.value));
+    const r = await fetch("/api/predictions/bet", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prediction_id: p.id, option_id: o.id, amount }),
+    });
+    const data = await r.json();
+    st.hints[p.id] = { ok: r.ok, text: r.ok ? data.message : data.error };
+    if (r.ok && window.sfx) sfx.cash();
+    if (r.ok) {
+      st.expanded = null;
+      st.amount = "";
+      if (data.balance !== undefined) {
+        st.bal = data.balance;
+        $("balance").textContent = data.balance.toLocaleString() + " credits";
+      }
+      setTimeout(() => { delete st.hints[p.id]; render(); }, 4000);
+    }
+    await refresh();
+  };
+  return panel;
+}
+
+/* ---------- admin ---------- */
+
+async function adminPost(url, body, predictionId) {
+  const r = await fetch(url, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await r.json();
+  if (predictionId) st.hints[predictionId] = { ok: r.ok, text: r.ok ? data.message : data.error };
+  await refresh();
+  return r.ok;
+}
+
+function adminBar(p) {
+  const bar = document.createElement("div");
+  bar.className = "admin-bar";
+  const sel = document.createElement("select");
+  for (const o of p.options) {
+    const op = document.createElement("option");
+    op.value = o.id;
+    op.textContent = o.label;
+    sel.appendChild(op);
+  }
+  // the 4s poll rebuilds this card — restore the streamer's picked option
+  if (st.resolveSel[p.id]) sel.value = st.resolveSel[p.id];
+  sel.onchange = () => { st.resolveSel[p.id] = sel.value; };
+  const resolveBtn = document.createElement("button");
+  resolveBtn.className = "btn success";
+  resolveBtn.textContent = "Resolve & pay";
+  resolveBtn.onclick = () => {
+    const label = sel.options[sel.selectedIndex].textContent;
+    if (!confirm(`Resolve “${p.question}” as “${label}” and pay out ${fmt(p.total)} credits?`)) return;
+    adminPost("/api/predictions/resolve",
+      { prediction_id: p.id, option_id: Number(sel.value) }, p.id);
+  };
+  const whoBtn = document.createElement("button");
+  whoBtn.className = "btn";
+  whoBtn.textContent = "Bettors";
+  whoBtn.onclick = async (e) => {
+    const card = e.target.closest(".market");
+    const old = card.querySelector(".bettors-list");
+    if (old) { old.remove(); return; }
+    const r = await fetch("/api/admin/predictions/bettors?prediction_id=" + p.id);
+    if (!r.ok) return;
+    const d = await r.json();
+    const list = document.createElement("div");
+    list.className = "bettors-list";
+    if (!d.bettors.length) list.textContent = "No bets yet.";
+    let lastOpt = null;
+    for (const b of d.bettors) {
+      if (b.option !== lastOpt) {
+        lastOpt = b.option;
+        const h = document.createElement("div");
+        h.className = "b-opt";
+        h.textContent = b.option;
+        list.appendChild(h);
+      }
+      const row = document.createElement("div");
+      row.className = "b-row";
+      const who = document.createElement("span");
+      who.textContent = b.username;
+      const amt = document.createElement("span");
+      amt.textContent = fmt(b.amount);
+      row.append(who, amt);
+      list.appendChild(row);
+    }
+    card.appendChild(list);
+  };
+
+  const lockBtn = document.createElement("button");
+  lockBtn.className = "btn";
+  lockBtn.textContent = p.locked ? "Unlock bets" : "Lock bets";
+  lockBtn.onclick = () => {
+    adminPost("/api/predictions/lock",
+      { prediction_id: p.id, locked: !p.locked }, p.id);
+  };
+  const delBtn = document.createElement("button");
+  delBtn.className = "btn danger";
+  delBtn.textContent = "Delete & refund";
+  delBtn.onclick = () => {
+    if (!confirm(`Delete “${p.question}” and refund all ${fmt(p.total)} credits bet?`)) return;
+    adminPost("/api/predictions/delete", { prediction_id: p.id }, p.id);
+  };
+  bar.append(sel, resolveBtn, lockBtn, whoBtn, delBtn);
+  return bar;
+}
+
+function adminDeleteBar(p) {
+  const bar = document.createElement("div");
+  bar.className = "admin-bar";
+  const delBtn = document.createElement("button");
+  delBtn.className = "btn danger";
+  delBtn.textContent = "Delete";
+  delBtn.onclick = () => {
+    if (!confirm("Remove this resolved prediction from the page? (Payouts already happened.)")) return;
+    adminPost("/api/predictions/delete", { prediction_id: p.id });
+  };
+  bar.appendChild(delBtn);
+  return bar;
+}
+
+/* ---------- create modal ---------- */
+
+function optionInput(value = "") {
+  const row = document.createElement("div");
+  row.className = "opt-input";
+  const input = document.createElement("input");
+  input.maxLength = 60;
+  input.placeholder = "Outcome " + ($("option-inputs").children.length + 1);
+  input.value = value;
+  row.appendChild(input);
+  const box = $("option-inputs");
+  if (box.children.length >= 2) {
+    const rm = document.createElement("button");
+    rm.type = "button";
+    rm.textContent = "×";
+    rm.title = "Remove";
+    rm.onclick = () => row.remove();
+    row.appendChild(rm);
+  }
+  box.appendChild(row);
+}
+
+function openModal() {
+  $("new-question").value = "";
+  $("new-lock").value = "";
+  $("modal-hint").textContent = "";
+  const box = $("option-inputs");
+  box.innerHTML = "";
+  optionInput("Yes");
+  optionInput("No");
+  $("pred-overlay").classList.add("show");
+  $("new-question").focus();
+}
+
+$("new-btn").onclick = openModal;
+$("modal-cancel").onclick = () => $("pred-overlay").classList.remove("show");
+$("pred-overlay").addEventListener("click", (e) => {
+  if (e.target === $("pred-overlay")) $("pred-overlay").classList.remove("show");
+});
+$("add-option").onclick = () => {
+  if ($("option-inputs").children.length < 6) optionInput();
+};
+
+$("modal-create").onclick = async () => {
+  const options = [...$("option-inputs").querySelectorAll("input")]
+    .map((i) => i.value.trim()).filter(Boolean);
+  const r = await fetch("/api/predictions", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question: $("new-question").value, options,
+                           lock_minutes: Number($("new-lock").value) || 0 }),
+  });
+  if (r.ok) {
+    $("pred-overlay").classList.remove("show");
+    await refresh();
+  } else {
+    $("modal-hint").textContent = (await r.json()).error;
+  }
+};
+
+refresh();
+setInterval(refresh, 4000);
+})();
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2dc000a186cd086',t:'MTc4NzE3MjMwNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

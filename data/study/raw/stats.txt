@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credits · Stats</title>
+<link rel="stylesheet" href="/static/theme.css?v=3">
+<style>
+  main { max-width: 860px; }
+
+  /* ============ LEADERBOARD TAB (moved from the old /leaderboard page) ============ */
+  #lb-panel ol { list-style: none; counter-reset: rank; padding: 0; }
+  #lb-panel ol li {
+    counter-increment: rank;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 8px; border-top: 1px solid var(--line);
+    font-variant-numeric: tabular-nums;
+  }
+  #lb-panel ol li::before {
+    content: counter(rank, decimal-leading-zero);
+    color: var(--muted); font-family: var(--mono); font-size: 12px;
+    margin-right: 14px;
+  }
+  #lb-panel ol li .face {
+    width: 22px; height: 22px; border-radius: 50%; object-fit: cover;
+    flex: none; margin-right: 8px;
+    border: 1px solid var(--line-strong); background: var(--inset);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600; color: var(--blue-text);
+  }
+  #lb-panel ol li:first-child .name { color: var(--gold); font-weight: 600; }
+  /* the name holds the username plus any badges; only the username itself
+     truncates, so a badge stays visible next to even the longest name */
+  #lb-panel ol li .name { flex: 1; min-width: 0; display: flex; align-items: center; }
+  #lb-panel ol li .name .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #lb-panel ol li .bal { font-family: var(--mono); font-size: 13px; color: var(--ink); }
+  #lb-panel ol li.me { background: var(--accent-dim); box-shadow: inset 2px 0 0 var(--accent); }
+  #lb-panel ol li:not(.lb-empty) { cursor: pointer; }
+  #lb-panel ol li:not(.lb-empty):hover { background: rgba(143, 153, 168, 0.1); }
+  #lb-panel .lb-empty { color: var(--muted); padding: 8px 0; }
+
+  /* user modal (outside the tab panels) */
+  #modal-back {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(17, 20, 24, 0.7);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #modal-back[hidden] { display: none; }
+  #modal-back .modal { width: min(340px, calc(100vw - 40px)); position: relative; text-align: center; padding: 28px 24px 24px; }
+  #modal-back .close {
+    position: absolute; top: 6px; right: 6px;
+    background: none; color: var(--muted); font-size: 16px; padding: 6px 10px;
+  }
+  #modal-back .close:hover { color: var(--ink); }
+  #modal-back .avatar {
+    width: 72px; height: 72px; border-radius: 50%; object-fit: cover;
+    border: 1px solid var(--line-strong); background: var(--inset);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 28px; font-weight: 600; color: var(--blue-text);
+  }
+  #modal-back h3 { color: var(--ink); font-size: 16px; margin-top: 10px; }
+  #modal-back .points { color: var(--gold); font-family: var(--mono); font-variant-numeric: tabular-nums; margin-top: 4px; }
+  #modal-back .since { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  #modal-back .btn { margin-top: 14px; }
+
+  /* streamer-only moderation controls */
+  .mod-box { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .mod-box .label { color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
+  .mod-box .row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+  .mod-box .btn { margin-top: 0; font-size: 12px; padding: 5px 10px; }
+  .mod-box .state { margin-top: 8px; font-size: 11px; min-height: 1.2em; }
+  .mod-box .state .tag { margin: 0 3px; }
+
+  .range { display: flex; gap: 6px; margin-bottom: 14px; }
+  .range button {
+    background: #202028; color: var(--dim); border: 0; border-radius: 2px;
+    font: inherit; font-size: 12px; font-weight: 600; padding: 5px 12px; cursor: pointer;
+  }
+  .range button:hover:not(.active) { color: var(--ink); background: #2b2b34; }
+  .range button.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent-line); }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 12px; margin-bottom: 20px; }
+  .tile { background: var(--panel2); border: 1px solid var(--line); border-radius: 2px; box-shadow: var(--shadow-1); padding: 14px 16px; }
+  .tile small { display: block; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+  .tile b { font-size: 20px; font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+  .tile .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 16px; align-items: start; margin-bottom: 16px; }
+  section.card { margin-bottom: 16px; }
+  .cols .card { margin-bottom: 0; }
+
+  td.amt { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.n { color: var(--muted); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.when { color: var(--muted); font-size: 12px; text-align: right; white-space: nowrap; }
+  .empty { color: var(--muted); font-size: 13px; padding: 6px 0; }
+  #login-box { text-align: center; padding: 40px 0; }
+</style>
+</head>
+<body>
+  <header>
+    <h1><span>■</span> Stats</h1>
+    <nav class="right" id="site-nav"></nav>
+  </header>
+  <script src="/static/nav.js?v=3"></script>
+  <script src="/static/badges.js?v=2"></script>
+
+  <main>
+    <nav class="tabs">
+      <button data-tab="leaderboard">Leaderboard</button>
+      <button data-tab="mine">My stats</button>
+    </nav>
+
+    <div data-tab-panel="leaderboard" id="lb-panel">
+      <div class="cols">
+        <section class="board card">
+          <h2>Top richest</h2>
+          <ol id="board"><li class="lb-empty">Loading…</li></ol>
+          <div class="hint" id="my-rank" style="text-align:center; margin-top:10px;"></div>
+        </section>
+        <section class="board card">
+          <h2>Top portfolios</h2>
+          <ol id="board-portfolios"><li class="lb-empty">Loading…</li></ol>
+          <div class="hint" style="text-align:center; margin-top:10px;">stock holdings at current market prices</div>
+        </section>
+        <section class="board card">
+          <h2>Top traders</h2>
+          <ol id="board-traders"><li class="lb-empty">Loading…</li></ol>
+          <div class="hint" style="text-align:center; margin-top:10px;">realized profit from the stock market</div>
+        </section>
+        <section class="board card">
+          <h2>Top gamblers</h2>
+          <ol id="board-gamblers"><li class="lb-empty">Loading…</li></ol>
+          <div class="hint" style="text-align:center; margin-top:10px;">net profit from casino games, duels &amp; predictions</div>
+        </section>
+        <section class="board card">
+          <h2>Top criminals</h2>
+          <ol id="board-criminals"><li class="lb-empty">Loading…</li></ol>
+          <div class="hint" style="text-align:center; margin-top:10px;">total credits stolen with !rob</div>
+        </section>
+      </div>
+    </div>
+
+    <div data-tab-panel="mine">
+    <div class="range" id="range" style="display:none;">
+      <button data-days="7">7 days</button>
+      <button data-days="30">30 days</button>
+      <button data-days="0" class="active">All time</button>
+    </div>
+    <div id="login-box" style="display:none;">
+      <p class="empty" style="margin-bottom:12px;">Log in to see your personal stats.</p>
+      <a class="btn primary" href="/auth/login">Log in with Kick</a>
+    </div>
+
+    <div id="stats-box" style="display:none;">
+      <section class="card" id="nw-card" style="display:none;">
+        <h2>Net worth — last 24h <span style="text-transform:none; letter-spacing:0; font-weight:400;">(credits + stock holdings)</span></h2>
+        <canvas id="nw-chart" width="780" height="130" style="width:100%; display:block; background:var(--inset); border:1px solid var(--line); border-radius:2px;"></canvas>
+      </section>
+
+      <div class="tiles">
+        <div class="tile"><small>Balance</small><b id="t-balance"></b><div class="sub" id="t-since"></div></div>
+        <div class="tile"><small>Total earned</small><b id="t-earned"></b><div class="sub">from the stream & chat</div></div>
+        <div class="tile"><small>Casino net</small><b id="t-net"></b><div class="sub" id="t-net-sub"></div></div>
+        <div class="tile"><small>Biggest win</small><b id="t-best"></b><div class="sub" id="t-best-sub"></div></div>
+      </div>
+
+      <div class="cols">
+        <section class="card">
+          <h2>Earnings</h2>
+          <div class="table-wrap"><table><tbody id="earnings"></tbody></table></div>
+          <div class="empty" id="earnings-empty" style="display:none;">Nothing earned yet — go chat!</div>
+        </section>
+
+        <section class="card">
+          <h2>Casino profit / loss</h2>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Game</th><th class="num">Plays</th><th class="num">Win %</th><th class="num">Wagered</th><th class="num">Won</th><th class="num">Net</th></tr></thead>
+            <tbody id="games"></tbody>
+          </table></div>
+          <div class="empty" id="games-empty" style="display:none;">No bets placed yet.</div>
+        </section>
+      </div>
+
+      <section class="card">
+        <h2>Trading &amp; spending</h2>
+        <div class="table-wrap"><table><tbody id="other"></tbody></table></div>
+      </section>
+
+      <section class="card">
+        <h2>Recent activity</h2>
+        <div class="table-wrap"><table><tbody id="recent"></tbody></table></div>
+      </section>
+    </div>
+    </div>
+  </main>
+
+  <!-- user modal (outside the tab panels so tab switching can't swallow it) -->
+  <div id="modal-back" hidden>
+    <div class="modal card" role="dialog" aria-modal="true" aria-label="User info">
+      <button class="close" id="modal-close" aria-label="Close">✕</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => Math.floor(n).toLocaleString();
+const signed = (n) => (n > 0 ? "+" : "") + fmt(n);
+
+/* ================= TABS ================= */
+(() => {
+  const buttons = document.querySelectorAll(".tabs button");
+  const names = [...buttons].map(b => b.dataset.tab);
+  function show(name) {
+    buttons.forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+    document.querySelectorAll("[data-tab-panel]").forEach(s => {
+      s.style.display = s.dataset.tabPanel === name ? "" : "none";
+    });
+    history.replaceState(null, "", "#" + name);
+  }
+  buttons.forEach(b => b.onclick = () => show(b.dataset.tab));
+  const initial = location.hash.slice(1);
+  show(names.includes(initial) ? initial : names[0]);
+  // hash edited while already on the page (e.g. a #tab link) still switches
+  window.addEventListener("hashchange", () => {
+    const name = location.hash.slice(1);
+    if (names.includes(name)) show(name);
+  });
+})();
+
+function ago(ts) {
+  const s = Math.max(0, Math.floor(Date.now() / 1000 - ts));
+  if (s < 60) return s + "s ago";
+  if (s < 3600) return Math.floor(s / 60) + "m ago";
+  if (s < 86400) return Math.floor(s / 3600) + "h ago";
+  return Math.floor(s / 86400) + "d ago";
+}
+
+function row(cells) {
+  const tr = document.createElement("tr");
+  for (const c of cells) tr.appendChild(c);
+  return tr;
+}
+function td(text, cls) {
+  const el = document.createElement("td");
+  if (cls) el.className = cls;
+  el.textContent = text;
+  return el;
+}
+function tdAmt(n, opts = {}) {
+  const el = td((opts.plain ? fmt(n) : signed(n)), "amt");
+  if (!opts.plain) el.classList.add(n > 0 ? "up" : n < 0 ? "down" : "x");
+  return el;
+}
+
+let statDays = 0;
+document.querySelectorAll("#range button").forEach((b) => {
+  b.onclick = () => {
+    statDays = Number(b.dataset.days);
+    document.querySelectorAll("#range button").forEach((x) => x.classList.toggle("active", x === b));
+    load();
+  };
+});
+
+async function load() {
+  const r = await fetch("/api/stats?days=" + statDays);
+  if (r.status === 401) { $("login-box").style.display = "block"; return; }
+  if (!r.ok) return;
+  const d = await r.json();
+  $("stats-box").style.display = "block";
+  $("range").style.display = "flex";
+
+  $("t-balance").textContent = fmt(d.balance);
+  $("balance").textContent = fmt(d.balance) + " credits";
+  $("t-since").textContent = d.member_since
+    ? "since " + new Date(d.member_since * 1000).toLocaleDateString() : "";
+  $("t-earned").textContent = fmt(d.earned_total);
+  document.querySelector("#stats-box .tile:nth-child(2) .sub").textContent =
+    d.days ? `last ${d.days} days` : "from the stream & chat";
+  const net = $("t-net");
+  net.textContent = signed(d.gambling_net);
+  net.className = d.gambling_net > 0 ? "up" : d.gambling_net < 0 ? "down" : "";
+  $("t-net-sub").textContent = d.games.length
+    ? "across " + d.games.reduce((s, g) => s + g.plays, 0).toLocaleString() + " bets"
+    : "no bets yet";
+  $("t-best").textContent = d.best_win.amount ? fmt(d.best_win.amount) : "—";
+  $("t-best-sub").textContent = d.best_win.game ? "on " + d.best_win.game : "";
+
+  const earnings = $("earnings");
+  earnings.innerHTML = "";
+  $("earnings-empty").style.display = d.earnings.length ? "none" : "block";
+  for (const e of d.earnings)
+    earnings.appendChild(row([td(e.source), td(e.count.toLocaleString() + "×", "n"), tdAmt(e.total)]));
+
+  const games = $("games");
+  games.innerHTML = "";
+  $("games-empty").style.display = d.games.length ? "none" : "block";
+  for (const g of d.games)
+    games.appendChild(row([
+      td(g.game), td(g.plays.toLocaleString(), "n"),
+      td(g.winrate_pct !== null && g.winrate_pct !== undefined ? g.winrate_pct + "%" : "—", "n"),
+      tdAmt(g.wagered, { plain: true }), tdAmt(g.won, { plain: true }), tdAmt(g.net),
+    ]));
+
+  const o = d.other;
+  const other = $("other");
+  other.innerHTML = "";
+  const lines = [
+    o.trades && ["Stocks", `${o.trades.toLocaleString()} trades`,
+                 o.stocks_net, false],
+    o.tts_count && ["TTS messages", `${o.tts_count.toLocaleString()}×`, -o.tts_spent, false],
+    o.shop_count && ["Shop redemptions", `${o.shop_count.toLocaleString()}×`, -o.shop_spent, false],
+    o.tips_sent_count && ["Tips sent", `${o.tips_sent_count.toLocaleString()}×`, -o.tips_sent, false],
+  ].filter(Boolean);
+  if (!lines.length) {
+    other.appendChild(row([td("Nothing here yet — trade, TTS, shop, or tip someone.", "empty")]));
+  }
+  for (const [label, count, amount] of lines)
+    other.appendChild(row([td(label), td(count, "n"), tdAmt(amount)]));
+
+  drawNetWorth(d.networth_history || []);
+
+  const recent = $("recent");
+  recent.innerHTML = "";
+  for (const t of d.recent)
+    recent.appendChild(row([td(t.label), tdAmt(t.amount), td(ago(t.created_at), "when")]));
+  if (!d.recent.length)
+    recent.appendChild(row([td("No transactions yet.", "empty")]));
+}
+
+/* net worth over time — snapshots recorded on every market tick */
+function drawNetWorth(nw) {
+  const card = $("nw-card"), cv = $("nw-chart");
+  const show = nw.length >= 2;
+  card.style.display = show ? "" : "none";
+  if (!show) return;
+  const ctx = cv.getContext("2d");
+  const W = cv.width, H = cv.height, PR = 64, PT = 8, PB = 8;
+  ctx.clearRect(0, 0, W, H);
+  const vals = nw.map(p => p[1]);
+  let min = Math.min(...vals), max = Math.max(...vals);
+  const pad = (max - min) * 0.1 || max * 0.05 || 1;
+  min = Math.max(0, min - pad); max += pad;
+  const x = (i) => 4 + i / (vals.length - 1) * (W - PR - 8);
+  const y = (v) => PT + (1 - (v - min) / (max - min)) * (H - PT - PB);
+  ctx.font = "10px ui-monospace, monospace";
+  ctx.textBaseline = "middle";
+  for (const g of [0, 1]) {
+    const v = min + (max - min) * g, gy = y(v);
+    ctx.strokeStyle = "#24242a";
+    ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W - PR + 4, gy); ctx.stroke();
+    ctx.fillStyle = "#8f99a8";
+    ctx.fillText(Math.round(v).toLocaleString(), W - PR + 8, gy);
+  }
+  const rising = vals[vals.length - 1] >= vals[0];
+  const color = rising ? "#32a467" : "#e76a6e";
+  const grad = ctx.createLinearGradient(0, PT, 0, H - PB);
+  grad.addColorStop(0, rising ? "rgba(50,164,103,0.18)" : "rgba(231,106,110,0.18)");
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  vals.forEach((v, i) => i ? ctx.lineTo(x(i), y(v)) : ctx.moveTo(x(0), y(v)));
+  ctx.lineTo(x(vals.length - 1), H - PB); ctx.lineTo(x(0), H - PB);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  vals.forEach((v, i) => i ? ctx.lineTo(x(i), y(v)) : ctx.moveTo(x(0), y(v)));
+  ctx.stroke();
+}
+
+load();
+setInterval(load, 30000);
+
+/* ================= LEADERBOARD (moved from the old /leaderboard page) ================= */
+(() => {
+const back = $("modal-back");
+$("modal-close").addEventListener("click", () => { back.hidden = true; });
+back.addEventListener("click", (e) => { if (e.target === back) back.hidden = true; });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") back.hidden = true; });
+
+async function openUser(username) {
+  const body = $("modal-body");
+  body.innerHTML = '<p class="lb-empty">Loading…</p>';
+  back.hidden = false;
+  const r = await fetch("/api/user?username=" + encodeURIComponent(username));
+  if (!r.ok) {
+    body.innerHTML = '<p class="lb-empty">Couldn\'t load this user.</p>';
+    return;
+  }
+  const u = await r.json();
+  body.innerHTML = "";
+
+  let avatar;
+  if (u.picture) {
+    avatar = document.createElement("img");
+    avatar.src = u.picture;
+    avatar.alt = "";
+  } else {
+    avatar = document.createElement("div");
+    avatar.textContent = (u.username[0] || "?").toUpperCase();
+  }
+  avatar.className = "avatar";
+
+  const name = document.createElement("h3");
+  name.textContent = u.username;
+  if (u.stake && window.stakeBadge) name.appendChild(stakeBadge("lg"));
+  if (u.fish_prestige && window.fishBadge)
+    name.appendChild(fishBadge("lg", u.fish_prestige));
+
+  const points = document.createElement("div");
+  points.className = "points";
+  points.textContent = u.balance.toLocaleString() + " credits";
+
+  const since = document.createElement("div");
+  since.className = "since";
+  since.textContent = "First seen " + new Date(u.created_at * 1000).toLocaleDateString();
+
+  const kick = document.createElement("a");
+  kick.className = "btn primary";
+  kick.href = u.kick_url;
+  kick.target = "_blank";
+  kick.rel = "noopener";
+  kick.textContent = "View on Kick ↗";
+
+  body.append(avatar, name, points, since, kick);
+  if (u.moderation) body.appendChild(modBox(u, name));
+}
+
+/* streamer-only: freeze / hide / stake badge / wipe straight from the modal */
+function modBox(u, name) {
+  const box = document.createElement("div");
+  box.className = "mod-box";
+  const label = document.createElement("div");
+  label.className = "label";
+  label.textContent = "Moderation";
+  const row = document.createElement("div");
+  row.className = "row";
+  const state = document.createElement("div");
+  state.className = "state";
+
+  function paintState(m) {
+    state.innerHTML = "";
+    if (m.frozen) state.innerHTML += '<span class="tag" style="color:var(--red-text)">FROZEN</span>';
+    if (m.hidden) state.innerHTML += '<span class="tag">HIDDEN FROM LEADERBOARD</span>';
+    if (m.stake) state.innerHTML += '<span class="tag" style="color:var(--green-text)">STAKE AFFILIATE</span>';
+  }
+
+  /* the badges next to the name in this modal, kept in sync with the toggle.
+     Both are repainted so the stake badge can't end up behind the fishing
+     one after a toggle */
+  function paintName(on) {
+    name.querySelectorAll(".stake-badge, .fish-badge").forEach(b => b.remove());
+    if (on && window.stakeBadge) name.appendChild(stakeBadge("lg"));
+    if (u.fish_prestige && window.fishBadge)
+      name.appendChild(fishBadge("lg", u.fish_prestige));
+  }
+
+  async function act(action) {
+    const r = await fetch("/api/admin/moderate", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: u.username, action }),
+    });
+    const d = await r.json();
+    if (!r.ok) { state.innerHTML = ""; state.textContent = d.error || "failed"; return; }
+    u.moderation = { frozen: d.frozen, hidden: d.hidden, stake: d.stake };
+    freeze.textContent = d.frozen ? "Unfreeze" : "Freeze";
+    freeze.className = "btn " + (d.frozen ? "success" : "danger");
+    hide.textContent = d.hidden ? "Show on leaderboard" : "Hide from leaderboard";
+    stake.textContent = d.stake ? "Remove stake badge" : "Give stake badge";
+    paintName(d.stake);
+    paintState(u.moderation);
+    document.querySelectorAll(".modal .points").forEach(p =>
+      p.textContent = d.balance.toLocaleString() + " credits");
+    loadBoard();  // the board behind the modal reflects hides/wipes immediately
+  }
+
+  const freeze = document.createElement("button");
+  freeze.className = "btn " + (u.moderation.frozen ? "success" : "danger");
+  freeze.textContent = u.moderation.frozen ? "Unfreeze" : "Freeze";
+  freeze.onclick = () => act(u.moderation.frozen ? "unfreeze" : "freeze");
+
+  const hide = document.createElement("button");
+  hide.className = "btn";
+  hide.textContent = u.moderation.hidden ? "Show on leaderboard" : "Hide from leaderboard";
+  hide.onclick = () => act(u.moderation.hidden ? "unhide" : "hide");
+
+  const stake = document.createElement("button");
+  stake.className = "btn";
+  stake.textContent = u.moderation.stake ? "Remove stake badge" : "Give stake badge";
+  stake.onclick = () => act(u.moderation.stake ? "unstake" : "stake");
+
+  const wipe = document.createElement("button");
+  wipe.className = "btn danger";
+  wipe.textContent = "Wipe balance";
+  wipe.onclick = () => {
+    if (confirm(`Wipe ${u.username}'s entire balance? This goes through the ledger and shows in your logs.`))
+      act("wipe");
+  };
+
+  row.append(freeze, hide, stake, wipe);
+  paintState(u.moderation);
+  box.append(label, row, state);
+  return box;
+}
+
+function fillBoard(el, rows, me, value, emptyText) {
+  el.innerHTML = "";
+  if (!rows.length) {
+    const li = document.createElement("li");
+    li.className = "lb-empty";
+    li.textContent = emptyText;
+    el.appendChild(li);
+    return;
+  }
+  for (const row of rows) {
+    const li = document.createElement("li");
+    if (me.logged_in && row.username === me.username) li.className = "me";
+    let face;
+    if (row.picture) {
+      face = document.createElement("img");
+      face.src = row.picture;
+      face.alt = "";
+      face.loading = "lazy";
+    } else {
+      face = document.createElement("span");
+      face.textContent = (row.username[0] || "?").toUpperCase();
+    }
+    face.className = "face";
+    const name = document.createElement("span");
+    name.className = "name";
+    const who = document.createElement("span");
+    who.className = "who";
+    who.textContent = row.username;
+    name.appendChild(who);
+    // badges are decoration and live in a separately-cached script, so a
+    // stale or missing badges.js must cost a badge, never the whole board
+    if (row.stake && window.stakeBadge) name.appendChild(stakeBadge());
+    if (row.fish_prestige && window.fishBadge)
+      name.appendChild(fishBadge("", row.fish_prestige));
+    const bal = document.createElement("span");
+    bal.className = "bal";
+    bal.textContent = value(row);
+    li.append(face, name, bal);
+    li.addEventListener("click", () => openUser(row.username));
+    el.appendChild(li);
+  }
+}
+
+async function loadBoard() {
+  const [me, lb] = await Promise.all([
+    fetch("/api/me").then(r => r.json()),
+    fetch("/api/leaderboards").then(r => r.json()),
+  ]);
+  $("my-rank").textContent = lb.me
+    ? `Your rank: #${lb.me.rank} · ${lb.me.balance.toLocaleString()} credits`
+    : "";
+  fillBoard($("board"), lb.richest, me,
+            r => r.balance.toLocaleString(), "No credits earned yet. Go chat!");
+  fillBoard($("board-portfolios"), lb.portfolios || [], me,
+            r => r.value.toLocaleString(), "Nobody holds any stocks yet.");
+  fillBoard($("board-traders"), lb.traders, me,
+            r => "+" + r.profit.toLocaleString(), "No trading profits yet.");
+  fillBoard($("board-gamblers"), lb.gamblers, me,
+            r => "+" + r.profit.toLocaleString(), "No gambling profits yet.");
+  fillBoard($("board-criminals"), lb.criminals, me,
+            r => "+" + r.stolen.toLocaleString(), "No successful robberies yet.");
+}
+
+loadBoard();
+setInterval(loadBoard, 30000);
+})();
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2dbe432d98bd0bf',t:'MTc4NzE3MTE2Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

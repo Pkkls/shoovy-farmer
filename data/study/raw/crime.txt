@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credits · Crime</title>
+<link rel="stylesheet" href="/static/theme.css?v=3">
+<style>
+  main { max-width: 900px; }
+
+  /* the !rob cooldown first, then the standing gear effects under it —
+     same shape as the fishing page's cast timer and collection line */
+  .status { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
+  .status .timers { display: flex; flex-direction: column; gap: 6px; }
+  .status .cast { font-size: 15px; color: var(--ink); }
+  .status .cast b { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .status .prog { color: var(--muted); font-size: 12px; }
+  .status .prog:empty { display: none; }
+
+  section.card { margin-bottom: 16px; }
+  .hint { margin-top: 10px; }
+  /* this hint only ever holds the outcome of a buy: empty, the reserved
+     line is just a gap at the bottom of the card */
+  #gear-hint:empty { display: none; }
+
+  /* ---- collapsible "more info" ---- */
+  /* the same collapsible as the fishing page: a summary line with the caret
+     parked out on the right edge, shut on every load so the page stays short */
+  .info-box > summary {
+    display: flex; align-items: center; gap: 10px; margin-top: 10px;
+    cursor: pointer; list-style: none; user-select: none;
+  }
+  .info-box > summary::-webkit-details-marker { display: none; }
+  .info-box > summary::after { content: "▸"; margin-left: auto; color: var(--muted);
+    font-size: 11px; transition: transform 0.15s ease; }
+  .info-box[open] > summary::after { transform: rotate(90deg); }
+  .info-box > summary h2 { margin-bottom: 0; }
+
+  /* ---- gear table ---- */
+  .chip { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; border-radius: 2px; padding: 1px 6px; white-space: nowrap; }
+  .chip.fulfilled { color: var(--green-text); background: rgba(50, 164, 103, 0.15); }
+</style>
+</head>
+<body>
+  <header>
+    <h1><span>■</span> Crime</h1>
+    <nav class="right" id="site-nav"></nav>
+  </header>
+  <script src="/static/nav.js?v=3"></script>
+  <script src="/static/sounds.js"></script>
+
+  <main>
+    <div class="status">
+      <div class="timers">
+        <!-- placeholder until the first /api/crime load lands — it must not
+             look like finished content, or a slow load reads as a broken page -->
+        <span class="cast" id="rob-status">🦹 Loading…</span>
+      </div>
+      <span class="prog" id="effects"></span>
+    </div>
+
+    <section class="card" id="gear-card" style="display:none;">
+      <h2>Crime gear</h2>
+      <div class="table-wrap"><table><tbody id="gear"></tbody></table></div>
+      <!-- gear-hint is where a buy's outcome lands, so the standing
+           explanation gets its own collapsible and survives a purchase -->
+      <div class="hint" id="gear-hint"></div>
+      <details class="info-box">
+        <summary><h2>More info</h2></summary>
+        <div class="hint">Gear for <b>!rob</b>, and every piece of it has an answer.
+          <b>One-time buys:</b> rides permanently shorten your !rob cooldown (best one counts), the fence raises
+          your own per-job steal cap, the safe and vault keep part of your balance out of robbers' reach, the
+          shell company and blind trust hide part of your stocks, and the guard dog permanently drops the odds
+          of anyone robbing you.
+          <b>Consumables</b> (each spent only when it actually changes the outcome): the lockpick boosts your next
+          attempt, the inside man rolls your next haul twice, the crowbar cracks a victim's safe, the ski mask
+          halves your next fine, the smoke bomb walks you out of a bodyguard clean, and the decoy wallet caps the
+          next big haul taken off you.
+          <b>On a 24h clock</b> (buying again adds time): the bodyguard auto-catches robbers, who still pay you the
+          fine; the silent alarm lets the job land but makes the thief hand a quarter of it straight back.</div>
+      </details>
+    </section>
+  </main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => Math.floor(n).toLocaleString();
+
+let robRemaining = 0, loggedIn = false, crimeOff = false;
+let cooldownTimer = null, loadedOnce = false, retryTimer = null;
+
+// live !rob countdown — ticked once a second, independent of the 20s data
+// refresh (which reseeds robRemaining from the server)
+function tickCooldown() {
+  clearTimeout(cooldownTimer);
+  const el = $("rob-status");
+  if (!loggedIn || crimeOff) return;
+  if (robRemaining <= 0) {
+    el.innerHTML = "🦹 Ready! Type <b>!rob [user]</b> in chat to make your move.";
+    return;
+  }
+  const m = Math.floor(robRemaining / 60), s = robRemaining % 60;
+  el.innerHTML = "⏳ Next <b>!rob</b> attempt in <b>" + (m ? m + "m " : "") + s + "s</b>";
+  robRemaining--;
+  cooldownTimer = setTimeout(tickCooldown, 1000);
+}
+
+function fmtLeft(s) {
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
+
+async function load() {
+  let d;
+  clearTimeout(retryTimer);
+  try {
+    const ctl = new AbortController();
+    const timeout = setTimeout(() => ctl.abort(), 15000);
+    const r = await fetch("/api/crime", { signal: ctl.signal });
+    clearTimeout(timeout);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    d = await r.json();
+  } catch (e) {
+    if (!loadedOnce) {
+      $("rob-status").innerHTML = "⚠️ Couldn't load crime data — retrying…";
+      // before anything has rendered a blank page is all the user sees, so
+      // retry quickly instead of waiting out the 20s poll
+      retryTimer = setTimeout(load, 5000);
+    }
+    return;
+  }
+  loadedOnce = true;
+  loggedIn = d.logged_in;
+  crimeOff = d.enabled === false;
+  if (crimeOff) {
+    $("rob-status").innerHTML = "🚫 Robbing is currently disabled.";
+  } else if (!loggedIn) {
+    $("rob-status").innerHTML =
+      '<a href="/auth/login" style="color:var(--blue-text);">Log in with Kick</a> to rob and buy gear.';
+  } else {
+    robRemaining = d.rob_remaining || 0;
+    tickCooldown();
+  }
+
+  if (d.balance !== undefined)
+    $("balance").textContent = d.balance.toLocaleString() + " credits";
+
+  // standing effects from what this user owns, right under the timer
+  const bits = [];
+  if (d.bodyguard_seconds > 0) bits.push(`🕴️ bodyguard active — ${fmtLeft(d.bodyguard_seconds)} left`);
+  if (d.alarm_seconds > 0) bits.push(`🔔 silent alarm armed — ${fmtLeft(d.alarm_seconds)} left`);
+  if (d.cooldown_reduction_pct) bits.push(`ride: -${d.cooldown_reduction_pct}% !rob cooldown`);
+  if (d.steal_bonus_pct) bits.push(`🕵️ fence: +${d.steal_bonus_pct}% steal cap`);
+  if (d.safe_pct) bits.push(`🧰 ${d.safe_pct}% of your balance locked away`);
+  if (d.shelter_pct) bits.push(`🏢 ${d.shelter_pct}% of your robbable stocks sheltered`);
+  if (d.deterrent_pct) bits.push(`🐕 guard dog: -${d.deterrent_pct} points off robbers' odds`);
+  $("effects").textContent = bits.join(" · ");
+
+  renderGear(d);
+}
+
+function renderGear(d) {
+  const card = $("gear-card");
+  if (crimeOff || !d.catalog || !d.catalog.length) { card.style.display = "none"; return; }
+  card.style.display = "";
+
+  const body = $("gear");
+  body.innerHTML = "";
+  for (const g of d.catalog) {
+    const tr = document.createElement("tr");
+    const what = document.createElement("td");
+    const nm = document.createElement("b");
+    nm.textContent = `${g.emoji} ${g.name}`;
+    const desc = document.createElement("span");
+    desc.style.cssText = "display:block;color:var(--muted);font-size:12px;";
+    desc.textContent = g.description;
+    what.append(nm, desc);
+    const cost = document.createElement("td");
+    cost.style.cssText = "text-align:right;font-family:var(--mono);white-space:nowrap;color:var(--gold);";
+    cost.textContent = fmt(g.price);
+    const act = document.createElement("td");
+    act.style.cssText = "text-align:right;white-space:nowrap;";
+    const oneTime = g.kind !== "consumable" && g.kind !== "timed";
+    if (oneTime && g.owned) {
+      const tag = document.createElement("span");
+      tag.className = "chip fulfilled";
+      tag.textContent = "OWNED";
+      act.appendChild(tag);
+    } else {
+      if (g.kind === "consumable" && g.owned) {
+        const n = document.createElement("span");
+        n.style.cssText = "color:var(--muted);font-size:12px;margin-right:8px;";
+        n.textContent = g.owned + "× held";
+        act.appendChild(n);
+      }
+      const timedLeft = g.kind === "timed" ? (g.seconds_left || 0) : 0;
+      if (timedLeft > 0) {
+        const n = document.createElement("span");
+        n.style.cssText = "color:var(--muted);font-size:12px;margin-right:8px;";
+        n.textContent = fmtLeft(timedLeft) + " left";
+        act.appendChild(n);
+      }
+      const b = document.createElement("button");
+      b.className = "btn primary";
+      b.style.cssText = "font-size:12px;padding:4px 10px;";
+      b.textContent = timedLeft > 0 ? "Extend" : "Buy";
+      b.disabled = !loggedIn;
+      b.onclick = async () => {
+        const r = await fetch("/api/crime/gear", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ item: g.key }),
+        });
+        const res = await r.json();
+        if (r.ok && window.sfx) sfx.cash();
+        if (r.ok && res.balance !== undefined)
+          $("balance").textContent = res.balance.toLocaleString() + " credits";
+        // the reload repaints the table, so the outcome message goes up
+        // last or it'd be racing a render that clears the row it sits under
+        await load();
+        const hint = $("gear-hint");
+        hint.className = "hint " + (r.ok ? "ok" : "err");
+        hint.textContent = r.ok ? res.message : res.error;
+      };
+      act.appendChild(b);
+    }
+    tr.append(what, cost, act);
+    body.appendChild(tr);
+  }
+}
+
+load();
+setInterval(load, 20000);
+// phones suspend timers in background tabs — refresh as soon as we're back
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) load();
+});
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2dbdf6bb9fcbb33',t:'MTc4NzE3MDk3MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

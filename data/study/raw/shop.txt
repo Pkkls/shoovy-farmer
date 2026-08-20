@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credits · Shop</title>
+<link rel="stylesheet" href="/static/theme.css?v=3">
+<style>
+  .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .page-head h2 { margin-bottom: 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 16px; align-items: start; margin-bottom: 28px; }
+  .empty { color: var(--muted); padding: 18px 0 26px; font-size: 13px; }
+  #mine-box, #queue-box, #resolved-box { margin-bottom: 28px; }
+
+  .reward .name { font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1.35; }
+  .reward .desc { color: var(--dim); font-size: 13px; margin-top: 4px; min-height: 1.2em; }
+  .reward .meta { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; }
+  .reward .cost { color: var(--gold); font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 15px; }
+  .reward .stock { color: var(--muted); font-size: 11px; }
+  .reward.sold-out { opacity: 0.55; }
+  .reward.disabled { opacity: 0.5; }
+
+  .note-panel { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .note-panel input { width: 100%; margin-bottom: 8px; }
+  .note-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* streamer controls on each card */
+  .admin-bar { display: flex; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  .admin-bar .btn { font-size: 12px; padding: 5px 10px; }
+  .off-tag { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: 0.05em; background: rgba(143,153,168,0.15); border-radius: 2px; padding: 1px 6px; margin-left: 6px; vertical-align: middle; }
+
+  .hint { margin-top: 10px; }
+
+  table { width: 100%; }
+  td.amt { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--red-text); white-space: nowrap; }
+  td.when { color: var(--muted); font-size: 12px; text-align: right; white-space: nowrap; }
+  td .note { color: var(--muted); font-size: 12px; display: block; }
+  .chip { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; border-radius: 2px; padding: 1px 6px; white-space: nowrap; }
+  .chip.pending { color: var(--gold); background: rgba(255, 255, 255, 0.07); }
+  .chip.fulfilled { color: var(--green-text); background: rgba(50, 164, 103, 0.15); }
+  .chip.refunded { color: var(--muted); background: rgba(143, 153, 168, 0.15); }
+  #queue td:last-child { text-align: right; white-space: nowrap; }
+  #queue .q-btn { font-size: 12px; padding: 4px 10px; margin-left: 6px; }
+
+  /* create / edit modal (same pattern as the predictions modal) */
+  .overlay { position: fixed; inset: 0; background: rgba(17, 20, 24, 0.7); display: none; align-items: flex-start; justify-content: center; z-index: 50; padding: 60px 16px 16px; }
+  .overlay.show { display: flex; }
+  .modal { width: 100%; max-width: 440px; }
+  .modal h3 { color: var(--ink); font-size: 15px; margin-bottom: 6px; }
+  .modal label { display: block; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; margin: 12px 0 6px; }
+  .modal input { width: 100%; }
+  .modal .row2 { display: flex; gap: 10px; }
+  .modal .row2 > div { flex: 1; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+</style>
+</head>
+<body>
+  <header>
+    <h1><span>■</span> Shop</h1>
+    <nav class="right" id="site-nav"></nav>
+  </header>
+  <script src="/static/nav.js?v=3"></script>
+  <script src="/static/sounds.js"></script>
+
+  <main>
+    <div class="page-head">
+      <h2 class="overline">Rewards</h2>
+      <button class="btn primary" id="new-item-btn" style="display:none;">+ New item</button>
+    </div>
+    <div class="empty" id="shop-empty" style="display:none;"></div>
+    <div class="grid" id="shop-list"></div>
+
+    <div id="mine-box" style="display:none;">
+      <h2 class="overline">Your redemptions</h2>
+      <section class="card"><div class="table-wrap"><table><tbody id="mine"></tbody></table></div></section>
+    </div>
+
+    <!-- streamer-only fulfillment area, at the bottom -->
+    <div id="queue-box" style="display:none;">
+      <h2 class="overline">Fulfillment queue</h2>
+      <section class="card">
+        <div class="table-wrap"><table><tbody id="queue"></tbody></table></div>
+        <div class="hint" id="queue-hint">Fulfill when you've done the thing; refund returns the credits (and the stock unit).</div>
+      </section>
+    </div>
+
+    <div id="resolved-box" style="display:none;">
+      <h2 class="overline">Recently handled</h2>
+      <section class="card"><div class="table-wrap"><table><tbody id="resolved"></tbody></table></div></section>
+    </div>
+  </main>
+
+  <!-- create / edit reward modal -->
+  <div class="overlay" id="item-overlay">
+    <div class="card modal">
+      <h3 id="item-modal-title">New item</h3>
+      <div class="row2">
+        <div style="flex:0 0 70px;"><label>Emoji</label><input id="m-emoji" maxlength="8" placeholder="🎁"></div>
+        <div><label>Name</label><input id="m-name" maxlength="80" placeholder="Choose my game"></div>
+      </div>
+      <label>Description (optional)</label>
+      <input id="m-desc" maxlength="200" placeholder="you pick what I play next">
+      <div class="row2">
+        <div><label>Cost</label><input id="m-cost" type="number" min="1" placeholder="50000"></div>
+        <div><label>Stock (blank = ∞)</label><input id="m-stock" type="number" min="0" placeholder="unlimited"></div>
+      </div>
+      <div class="hint err" id="m-hint"></div>
+      <div class="modal-actions">
+        <button class="btn" id="m-cancel">Cancel</button>
+        <button class="btn primary" id="m-save">Create</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g,
+  (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+const fmt = (n) => Math.floor(n).toLocaleString();
+
+const st = {
+  items: [],        // enabled items (viewer view)
+  adminItems: [],   // all items incl. disabled (streamer view)
+  queue: [], resolved: [],
+  mine: [], logged: false, admin: false, bal: 0,
+  expanded: null,   // item id with the note panel open
+  note: "",
+  hints: {},        // item id -> {text, ok}
+};
+
+async function refresh() {
+  const d = await (await fetch("/api/shop")).json();
+  st.items = d.items || [];
+  st.mine = d.mine || [];
+  st.logged = d.logged_in;
+  st.admin = d.is_admin;
+  if (d.balance !== undefined) {
+    st.bal = d.balance;
+    $("balance").textContent = d.balance.toLocaleString() + " credits";
+  }
+  if (st.admin) {
+    const a = await (await fetch("/api/admin/shop")).json();
+    st.adminItems = a.items || [];
+    st.queue = a.queue || [];
+    st.resolved = a.resolved || [];
+  }
+  render();
+}
+
+function ago(ts) {
+  const s = Math.max(0, Math.floor(Date.now() / 1000 - ts));
+  if (s < 60) return s + "s ago";
+  if (s < 3600) return Math.floor(s / 60) + "m ago";
+  if (s < 86400) return Math.floor(s / 3600) + "h ago";
+  return Math.floor(s / 86400) + "d ago";
+}
+
+async function adminPost(url, body, hintId) {
+  const r = await fetch(url, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const d = await r.json();
+  if (hintId) {
+    const hint = $(hintId);
+    hint.className = "hint" + (r.ok ? "" : " err");
+    hint.textContent = r.ok ? (d.message || "Done") : (d.error || "Failed");
+  }
+  await refresh();
+  return r.ok;
+}
+
+function render() {
+  const active = document.activeElement;
+  if (active && (active.id === "note-input" || active.closest?.(".modal"))) return;
+
+  $("new-item-btn").style.display = st.admin ? "" : "none";
+
+  // the grid: streamer sees all items (incl. disabled) to manage; viewers see enabled
+  const items = st.admin ? st.adminItems : st.items;
+  $("shop-empty").style.display = items.length ? "none" : "block";
+  $("shop-empty").textContent = st.admin
+    ? "No rewards yet — hit + New item to add one."
+    : "The shop is empty right now — check back later!";
+  const box = $("shop-list");
+  box.innerHTML = "";
+  for (const it of items) box.appendChild(rewardCard(it));
+
+  renderQueue();
+
+  $("mine-box").style.display = st.logged && st.mine.length ? "" : "none";
+  const mine = $("mine");
+  mine.innerHTML = "";
+  for (const r of st.mine) {
+    const tr = document.createElement("tr");
+    const what = document.createElement("td");
+    what.textContent = r.item_name + " ";
+    const chip = document.createElement("span");
+    chip.className = "chip " + r.status;
+    chip.textContent = r.status.toUpperCase();
+    what.appendChild(chip);
+    if (r.note) {
+      const note = document.createElement("span");
+      note.className = "note";
+      note.textContent = "“" + r.note + "”";
+      what.appendChild(note);
+    }
+    const amt = document.createElement("td");
+    amt.className = "amt";
+    amt.textContent = "-" + fmt(r.cost);
+    const when = document.createElement("td");
+    when.className = "when";
+    when.textContent = ago(r.created_at);
+    tr.append(what, amt, when);
+    mine.appendChild(tr);
+  }
+}
+
+/* ---------- streamer: fulfillment queue + recently handled ---------- */
+
+function renderQueue() {
+  $("queue-box").style.display = st.admin ? "" : "none";
+  $("resolved-box").style.display = st.admin ? "" : "none";
+  if (!st.admin) return;
+
+  const q = $("queue");
+  q.innerHTML = "";
+  if (!st.queue.length) {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.style.color = "var(--muted)";
+    td.textContent = "Nothing pending — all caught up!";
+    tr.appendChild(td);
+    q.appendChild(tr);
+  }
+  for (const row of st.queue) {
+    const tr = document.createElement("tr");
+    const what = document.createElement("td");
+    const who = document.createElement("b");
+    who.textContent = row.username;
+    what.append(who, document.createTextNode(" · " + row.item_name));
+    if (row.note) {
+      const n = document.createElement("span");
+      n.className = "note";
+      n.textContent = "“" + row.note + "”";
+      what.appendChild(n);
+    }
+    const when = document.createElement("td");
+    when.className = "when";
+    when.textContent = ago(row.created_at);
+    const act = document.createElement("td");
+    const fulfill = document.createElement("button");
+    fulfill.className = "btn success q-btn";
+    fulfill.textContent = "Fulfill";
+    fulfill.onclick = () => adminPost("/api/admin/shop/resolve", { id: row.id, action: "fulfill" }, "queue-hint");
+    const refund = document.createElement("button");
+    refund.className = "btn danger q-btn";
+    refund.textContent = "Refund";
+    refund.onclick = () => {
+      if (confirm(`Refund ${row.cost.toLocaleString()} credits to ${row.username}?`))
+        adminPost("/api/admin/shop/resolve", { id: row.id, action: "refund" }, "queue-hint");
+    };
+    act.append(fulfill, refund);
+    tr.append(what, when, act);
+    q.appendChild(tr);
+  }
+
+  const res = $("resolved");
+  res.innerHTML = "";
+  for (const row of st.resolved) {
+    const tr = document.createElement("tr");
+    const what = document.createElement("td");
+    what.textContent = `${row.username} · ${row.item_name} — ${row.status}`;
+    const amt = document.createElement("td");
+    amt.className = "amt";
+    amt.style.color = row.status === "refunded" ? "var(--green-text)" : "var(--red-text)";
+    amt.textContent = (row.status === "refunded" ? "+" : "-") + fmt(row.cost);
+    const when = document.createElement("td");
+    when.className = "when";
+    when.textContent = ago(row.resolved_at);
+    tr.append(what, amt, when);
+    res.appendChild(tr);
+  }
+}
+
+/* ---------- reward cards ---------- */
+
+function rewardCard(it) {
+  const soldOut = it.stock !== null && it.stock < 1;
+  const disabled = st.admin && !it.enabled;
+  const card = document.createElement("section");
+  card.className = "card reward" + (soldOut ? " sold-out" : "") + (disabled ? " disabled" : "");
+  card.innerHTML = `
+    <div class="name">${it.emoji ? esc(it.emoji) + " " : ""}${esc(it.name)}${disabled ? '<span class="off-tag">DISABLED</span>' : ""}</div>
+    <div class="desc">${esc(it.description)}</div>
+    <div class="meta">
+      <span class="cost">${fmt(it.cost)} credits</span>
+      <span class="stock">${it.stock === null ? "" : (soldOut ? "SOLD OUT" : it.stock + " left")}</span>
+    </div>`;
+
+  const meta = card.querySelector(".meta");
+  const btn = document.createElement("button");
+  btn.className = "btn primary";
+  btn.textContent = "Redeem";
+  if (!st.logged || soldOut || disabled) btn.disabled = true;
+  btn.onclick = () => {
+    st.expanded = st.expanded === it.id ? null : it.id;
+    st.note = "";
+    render();
+  };
+  meta.appendChild(btn);
+
+  if (!st.logged) {
+    const login = document.createElement("div");
+    login.className = "hint";
+    login.innerHTML = '<a href="/auth/login" style="color:var(--blue-text);">Log in with Kick</a> to redeem.';
+    card.appendChild(login);
+  }
+
+  if (st.expanded === it.id) card.appendChild(notePanel(it));
+
+  // streamer controls
+  if (st.admin) card.appendChild(adminBar(it));
+
+  const hint = st.hints[it.id];
+  if (hint) {
+    const el = document.createElement("div");
+    el.className = "hint " + (hint.ok ? "ok" : "err");
+    el.textContent = hint.text;
+    card.appendChild(el);
+  }
+  return card;
+}
+
+function adminBar(it) {
+  const bar = document.createElement("div");
+  bar.className = "admin-bar";
+  const edit = document.createElement("button");
+  edit.className = "btn";
+  edit.textContent = "Edit";
+  edit.onclick = () => openModal(it);
+  const toggle = document.createElement("button");
+  toggle.className = "btn";
+  toggle.textContent = it.enabled ? "Disable" : "Enable";
+  toggle.onclick = () => adminPost("/api/admin/shop/item/toggle", { id: it.id, enabled: !it.enabled });
+  const del = document.createElement("button");
+  del.className = "btn danger";
+  del.textContent = "Delete";
+  del.onclick = () => {
+    if (confirm(`Delete “${it.name}”? Viewers will no longer see it.`))
+      adminPost("/api/admin/shop/item/delete", { id: it.id });
+  };
+  bar.append(edit, toggle, del);
+  return bar;
+}
+
+/* ---------- create / edit modal ---------- */
+
+let editingItem = null;
+
+function openModal(item) {
+  editingItem = item ? item.id : null;
+  $("item-modal-title").textContent = item ? "Edit item" : "New item";
+  $("m-save").textContent = item ? "Save changes" : "Create";
+  $("m-emoji").value = item ? (item.emoji || "") : "";
+  $("m-name").value = item ? item.name : "";
+  $("m-desc").value = item ? item.description : "";
+  $("m-cost").value = item ? item.cost : "";
+  $("m-stock").value = item && item.stock !== null ? item.stock : "";
+  $("m-hint").textContent = "";
+  $("item-overlay").classList.add("show");
+  $("m-name").focus();
+}
+
+$("new-item-btn").onclick = () => openModal(null);
+$("m-cancel").onclick = () => $("item-overlay").classList.remove("show");
+$("item-overlay").addEventListener("click", (e) => {
+  if (e.target === $("item-overlay")) $("item-overlay").classList.remove("show");
+});
+$("m-save").onclick = async () => {
+  const body = {
+    name: $("m-name").value, description: $("m-desc").value,
+    cost: $("m-cost").value, stock: $("m-stock").value, emoji: $("m-emoji").value,
+  };
+  if (editingItem !== null) body.id = editingItem;
+  const r = await fetch("/api/admin/shop/item", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const d = await r.json();
+  if (r.ok) { $("item-overlay").classList.remove("show"); await refresh(); }
+  else $("m-hint").textContent = d.error || "Failed";
+};
+
+/* ---------- viewer redeem ---------- */
+
+function notePanel(it) {
+  const panel = document.createElement("div");
+  panel.className = "note-panel";
+  const affordable = st.bal >= it.cost;
+  panel.innerHTML = `
+    <input id="note-input" maxlength="200" placeholder="Optional note for the streamer…" value="${esc(st.note)}">
+    <div class="note-actions">
+      <span style="margin-right:auto;color:var(--muted);font-size:12px;">
+        Balance after: ${affordable ? fmt(st.bal - it.cost) : '<span style="color:var(--red-text)">not enough credits</span>'}
+      </span>
+      <button class="btn" id="note-cancel">Cancel</button>
+      <button class="btn success" id="note-confirm" ${affordable ? "" : "disabled"}>
+        Confirm — ${fmt(it.cost)}
+      </button>
+    </div>`;
+  panel.querySelector("#note-input").addEventListener("input", (e) => { st.note = e.target.value; });
+  panel.querySelector("#note-cancel").onclick = () => { st.expanded = null; st.note = ""; render(); };
+  panel.querySelector("#note-confirm").onclick = async () => {
+    const r = await fetch("/api/shop/redeem", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ item_id: it.id, note: st.note }),
+    });
+    const data = await r.json();
+    st.hints[it.id] = { ok: r.ok, text: r.ok ? data.message : data.error };
+    if (r.ok && window.sfx) sfx.cash();
+    if (r.ok) {
+      st.expanded = null;
+      st.note = "";
+      if (data.balance !== undefined) {
+        st.bal = data.balance;
+        $("balance").textContent = data.balance.toLocaleString() + " credits";
+      }
+      setTimeout(() => { delete st.hints[it.id]; render(); }, 5000);
+    }
+    await refresh();
+  };
+  return panel;
+}
+
+refresh();
+setInterval(refresh, 8000);
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2dbe3760c3d7017',t:'MTc4NzE3MTEzNg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
