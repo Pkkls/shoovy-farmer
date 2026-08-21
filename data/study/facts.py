@@ -175,10 +175,50 @@ def cmd_list():
     return 0
 
 
+def cmd_cascade(dry=False):
+    """Refute, transitively, everything resting on a refuted fact.
+
+    Doing this by hand refutes one layer at a time and the next check finds
+    another, which is how a store quietly keeps live facts standing on dead
+    ones. The reasoning inside a cascaded fact is usually still sound; what
+    died is its input, and the method text says so.
+    """
+    changed = total = 0
+    while True:
+        cur = current()
+        dead = {f for f, r in cur.items() if r["status"] == "refuted"}
+        wave = [r for r in cur.values()
+                if r["status"] != "refuted"
+                and set(r.get("derived_from") or []) & dead]
+        if not wave:
+            break
+        for r in wave:
+            parents = [p for p in r["derived_from"] if p in dead]
+            print(f"  x {r['id']} (parent refute: {', '.join(parents)})")
+            if not dry:
+                add(id=r["id"], subject=r["subject"], predicate=r["predicate"],
+                    value=r["value"], unit=r.get("unit"), status="refuted",
+                    confidence=0.85, derived_from=r.get("derived_from"),
+                    supersedes=r["id"],
+                    method=f"refute par cascade: repose sur {', '.join(parents)}, "
+                           "lui-meme refute. Le raisonnement peut rester valable, "
+                           "c'est son entree qui est morte",
+                    source="facts.py cascade")
+            total += 1
+        changed += 1
+        if dry or changed > 20:
+            break
+    print(f"\n{total} fait(s) propage(s) en {changed} vague(s)"
+          f"{' (--dry, rien ecrit)' if dry else ''}")
+    return 0
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
         return 2
+    if sys.argv[1] == "cascade":
+        return cmd_cascade(dry="--dry" in sys.argv)
     cmd, arg = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else None)
     if cmd == "what" and arg:
         return cmd_what(arg)

@@ -63,27 +63,30 @@ resource". That was wrong and is superseded: the scarce resource is
 
 ## State of knowledge
 
-*Generated from `facts.jsonl` by `render.py`. 172 facts, 184 records with history. Do not hand-edit this section.*
+*Generated from `facts.jsonl` by `render.py`. 228 facts, 278 records with history. Do not hand-edit this section.*
 
 | status | count |
 |---|---|
-| measured | 33 |
-| derived | 18 |
-| candidate | 6 |
-| assumed | 106 |
-| refuted | 9 |
+| measured | 68 |
+| derived | 13 |
+| candidate | 7 |
+| assumed | 122 |
+| refuted | 18 |
 
-### measured (33)
+### measured (68)
 
 Observed on the wire by this study.
 
 | subject | fact | value | n | source |
 |---|---|---|---|---|
 | `command:!fish` | part_des_commandes_observees | 0.84 fraction | 25 | chat.jsonl |
+| `event:chest` | montant_d_un_chest_observe | 20000 credits | 1 | chat.jsonl |
 | `event:chest` | occurrences_observees | 0 evenements | 1270 | chat.jsonl via analyze_chat.py |
+| `infra:availability` | duty_cycle | 0.765 fraction |  | avail.jsonl sentinel n=17, 1 req/5min from 1 IP |
+| `infra:availability` | pattern | intermittent flapping: up~48m then down~6m (60s timeout) then up~5m then down (429); not a binary outage |  | avail.jsonl transitions |
 | `infra:availability` | serie_utilisable_max | 2 requetes | 19 | uptime.py |
-| `infra:availability` | taux_reponses_utilisables | 0.158 fraction | 19 | uptime.py |
 | `infra:availability` | part_des_commandes_joueurs_ayant_recu_une_reponse | 0.038 fraction | 52 | chat.jsonl via analyze_chat.py |
+| `infra:availability` | le_site_etait_il_en_panne_pendant_nos_mesures | False | 3650 | requests.jsonl + chat.jsonl, correlation temporelle |
 | `infra:kick` | delai_de_reponse_du_bot | 111 s | 2 | chat.jsonl via analyze_chat.py |
 | `infra:kick` | le_jeu_repond_en_chat | True | 1270 | chat.jsonl via analyze_chat.py |
 | `infra:kick` | debit_du_chat | 19.2 msg/min | 368 | chat.jsonl |
@@ -92,6 +95,7 @@ Observed on the wire by this study.
 | `infra:kick` | chatroom_id | 29834074 |  | kick.com/api/v2 |
 | `infra:kick` | follow_minimum_avant_de_poster | 6 min |  | kick.com/api/v2 |
 | `infra:kick` | slow_mode_interval | 1 s |  | kick.com/api/v2 |
+| `infra:leaderboard` | five_boards | richest(balance,#1=992397), traders(stock profit,788244), portfolios(value,330316), gamblers(casino profit,222771), criminals(stolen). Rank 1 is per-board, not one target. |  | /api/leaderboards |
 | `infra:leaderboard` | solde_rang_1 | 792841 credits |  | /api/leaderboard |
 | `infra:leaderboard` | solde_rang_2 | 362064 credits |  | /api/leaderboard |
 | `infra:leaderboard` | solde_rang_3 | 211700 credits |  | /api/leaderboard |
@@ -101,7 +105,36 @@ Observed on the wire by this study.
 | `infra:shoovy.wtf` | fronting | cloudflare devant railway |  | requests.jsonl |
 | `infra:shoovy.wtf` | cold_start | 40 s | 3 | requests.jsonl |
 | `infra:shoovy.wtf` | accepte_client_stdlib | True |  | requests.jsonl |
+| `infra:shoovy.wtf` | 429_is_cloudflare_browser_gate | CORRECTION to iter3: browser (cf_clearance + Chrome TLS) gets 200 while curl/Go/tls-neutral get 429, same IP same instant. The 429 is Cloudflare challenging non-browser clients, not backend-down and not IP-specific. Some routes still 502 for the browser too (partial origin unhealth on top). |  | in-page fetch via logged-in Chrome vs curl/sentinel, 2026-08-20 15:55Z |
+| `infra:shoovy.wtf` | browser_also_rate_limited | the Cloudflare-cleared browser session still returns 429 after ~25 rapid in-page calls; the gate clears the bot challenge but enforces a request rate. Harness and farmer must pace even in-browser. |  | api_test_harness 2x run, 429 mid-run |
+| `infra:shoovy.wtf` | reproducible | every base read endpoint returned identical bodies across 2 consecutive calls (consistent=true); API is deterministic for reads |  | api_test_harness |
+| `mechanic:business` | catalog_roi | illegal ~2%/h (Brothel 10875/h @500k=2.17%, Meth Lab 20250/h @1M=2.02%), legal ~1-1.3%/h; bust_pct risk on illegal |  | /api/business catalog |
+| `mechanic:business` | params | till_hours 8, income_pct 75, offline_pct 35, live_pct 100, manager_mult 3, sell_pct 50, max_slots 6, slot_price 25000 |  | /api/business |
 | `mechanic:casino` | le_client_porte_t_il_les_probabilites | False | 11 | games_tables.json via extract_games.py |
+| `mechanic:casino` | taux_de_rakeback | 0.5 % du mise |  | raw/api_games_info.json + raw/api_rakeback.json via casino_verdict.py |
+| `mechanic:casino_blackjack` | natural_blackjack_payout | 3:2 |  | games_tables.json |
+| `mechanic:casino_cases` | difficulty_tiers | ['easy', 'medium', 'hard', 'expert', 'master'] |  | games_tables.json |
+| `mechanic:casino_coinflip` | sides | ['heads', 'tails'] |  | games_tables.json |
+| `mechanic:casino_crash` | animation_defaults | {'growth': 0.07, 'max': 1000} |  | games_tables.json |
+| `mechanic:casino_crash` | predictable | False |  | no seed/hash/nonce in games_info crash_history, only past results |
+| `mechanic:casino_dragon_tower` | difficulty_tiers | ['easy', 'medium', 'hard', 'expert', 'master'] |  | games_tables.json |
+| `mechanic:casino_keno` | board_size | 40 nombres |  | games_tables.json |
+| `mechanic:casino_keno` | difficulty_tiers | ['classic', 'low', 'medium', 'high'] |  | games_tables.json |
+| `mechanic:casino_keno` | max_picks | 10 nombres |  | games_tables.json |
+| `mechanic:casino_keno` | numbers_drawn_per_round | 10 nombres |  | games_tables.json |
+| `mechanic:casino_mines` | default_mines | 3 mines |  | games_tables.json |
+| `mechanic:casino_mines` | grid_tiles | 25 cases |  | games_tables.json |
+| `mechanic:casino_mines` | max_mines_selectable | 24 mines |  | games_tables.json |
+| `mechanic:casino_plinko` | default_risk | medium |  | games_tables.json |
+| `mechanic:casino_plinko` | default_rows | 16 rangees |  | games_tables.json |
+| `mechanic:casino_plinko` | risk_levels | ['low', 'medium', 'high'] |  | games_tables.json |
+| `mechanic:casino_plinko` | row_options | [8, 9, 10, 11, 12, 13, 14, 15, 16] |  | games_tables.json |
+| `mechanic:casino_rock_paper_scissors` | choices | ['rock', 'paper', 'scissors'] |  | games_tables.json |
+| `mechanic:casino_rock_paper_scissors` | pvp_pot_formula | stake * 2 |  | games_tables.json |
+| `mechanic:casino_rock_paper_scissors` | tie_rule | stake returned on tie |  | games_tables.json |
+| `mechanic:casino_slots` | grid | {'reels': 6, 'rows': 5} |  | games_tables.json |
+| `mechanic:casino_wheel` | bet_categories | [1, 3, 5, 10, 20] |  | games_tables.json |
+| `mechanic:daily` | get_method | 405 Method Not Allowed on GET; daily is POST-only, amount only obtainable by claiming with a session |  | GET /api/daily |
 | `mechanic:fishing` | contenu_d_une_annonce_de_prise | poids en lb, espece, rarete, valeur en credits, progression X/100 especes, mention 'new personal best' le cas echeant | 2 | payouts.jsonl via payouts.py |
 | `mechanic:fishing` | valeur_d_une_prise | 210.5 credits | 2 | chat.jsonl via analyze_chat.py |
 | `mechanic:fishing` | decay | 0.1 fraction/jour |  | /api/fishing |
@@ -110,40 +143,38 @@ Observed on the wire by this study.
 | `mechanic:fishing` | especes_au_catalogue | 100 especes | 2 | payouts.jsonl via payouts.py |
 | `mechanic:stocks` | profondeur_amm | 250000 credits |  | market.jsonl |
 | `mechanic:stocks` | frais | 1 % |  | market.jsonl |
+| `mechanic:stocks` | price_tick_seconds | 32 s |  | /api/stocks/history GAMBA dt |
 | `mechanic:stocks` | nombre_de_tickers | 5 |  | market.jsonl |
+| `mechanic:stocks` | tickers_are_game_metric_indices | GAMBA=casino wager volume, LOSS=house wins, WINS=player wins, CHAT=chat rate, STRMR=stream state; stated in /api/stocks news headlines and ticker names, never surfaced in the UI |  | /api/stocks news + quotes |
 | `mechanic:stocks` | trading_ouvert | True |  | market.jsonl |
 
-### derived (18)
+### derived (13)
 
 Computed from other facts. Each names what it rests on.
 
 | subject | fact | value | n | source |
 |---|---|---|---|---|
 | `event:chest` | probabilite_de_capter_un_chest | indeterminee, gouvernee par la fiabilite d'ecriture Kick |  | infer.py |
-| `infra:availability` | la_disponibilite_n_est_pas_un_nombre_unique | lecture triviale 0.158, traitement d'une commande 0.038 |  | facts_audit.txt |
-| `infra:availability` | probabilite_qu_un_appel_aboutisse | 0.158 fraction |  | infer.py |
-| `infra:availability` | probabilite_qu_un_enchainement_de_2_appels_aboutisse | 0.025 fraction |  | infer.py |
-| `infra:availability` | probabilite_qu_un_enchainement_de_3_appels_aboutisse | 0.0039 fraction |  | infer.py |
-| `infra:availability` | un_read_reussi_ne_garantit_pas_qu_une_action_aboutit | True |  | facts_audit.txt |
-| `infra:availability` | regle_de_lecture_de_la_disponibilite | retryable: 1-(1-p)^k sur la fenetre; deadline: p^etapes |  | budget.py |
 | `infra:kick` | ce_que_la_voie_kick_ne_resout_pas | la sante du backend du jeu, et les pages web sans equivalent chat |  | chat.jsonl |
 | `infra:kick` | la_boucle_complete_tient_cote_kick | True |  | facts.jsonl + raw/commands.txt |
 | `infra:shoovy.wtf` | valeur_documentaire_des_pages_html | variable selon la page: /commands est de la doc, /games est un moteur de rendu |  | games_tables.json via extract_games.py |
-| `mechanic:business` | tentatives_par_collecte_reussie | 6.3 appels |  | infer.py |
-| `mechanic:business` | rang_d_achat_du_manager | premier achat rentable |  | infer.py |
 | `mechanic:business` | division_du_cout_en_requetes_par_manager | 3 |  | model.py |
 | `mechanic:business` | cadence_de_collecte_optimale | T* = C / r |  | model.py |
+| `mechanic:casino` | meilleure_esperance_nette_rakeback_inclus | -0.34 % par credit mise |  | raw/api_games_info.json + raw/api_rakeback.json via casino_verdict.py |
 | `mechanic:casino` | verdict_espérance_calculable_hors_ligne | False |  | games_tables.json via extract_games.py |
+| `mechanic:casino` | entre_dans_le_plan | False |  | raw/api_games_info.json + raw/api_rakeback.json via casino_verdict.py |
 | `mechanic:casino` | requete_la_plus_rentable_a_capturer | /api/games/info puis /api/rakeback |  | games_tables.json via extract_games.py |
+| `mechanic:casino_coinflip` | retour_au_joueur | 0.97 fraction |  | raw/api_games_info.json + raw/api_rakeback.json via casino_verdict.py |
 | `mechanic:fishing` | valeur_conservee_en_vendant_une_fois_par_jour | 1.0 fraction |  | model.py |
 | `mechanic:fishing` | valeur_conservee_apres_une_semaine | 0.778 fraction |  | model.py |
 
-### candidate (6)
+### candidate (7)
 
 A reading that fits, with the thing that would break it named.
 
 | subject | fact | value | n | source |
 |---|---|---|---|---|
+| `event:chest` | les_chests_partent_ils_sans_preneur | True | 1 | chat.jsonl |
 | `infra:kick` | les_commandes_postees_pendant_une_panne_sont_elles_traitees_plus_tard | inconnu |  | chat.jsonl |
 | `infra:leaderboard` | debit_net_requis_pour_rattraper_en_30_jours | 26428.0 credits/jour |  | infer.py |
 | `infra:leaderboard` | debit_net_requis_pour_rattraper_en_90_jours | 8809.3 credits/jour |  | infer.py |
@@ -151,6 +182,7 @@ A reading that fits, with the thing that would break it named.
 | `mechanic:fishing` | ce_qui_determine_la_valeur_d_une_prise | le poids, pas la rarete | 2 | payouts.jsonl via payouts.py |
 | `mechanic:stocks` | day_low_day_high_et_volume_sont_des_fenetres_glissantes | True | 2 | market.jsonl |
 
+- `chest.goes_unclaimed` breaks if: un seul chest observe, et il est tombe a 23:55 un soir ou la chaine etait peu active; en pleine affluence il trouverait probablement preneur, ce qui diviserait le gain entre participants
 - `arch.commands_queued_during_outage` breaks if: si le jeu traite le chat en direct sans file, une commande postee pendant une panne est simplement perdue, et le seul gain de la voie Kick est de ne plus subir nous-memes le rate limit
 - `target.rate_needed_30d` breaks if: signale par l'audit: marque derive alors que sa propre methode dit que ses deux hypotheses sont fausses (depart de zero, rang 1 immobile). Un calcul juste sur une premisse fausse reste faux. Sans la pente du rang 1, ce chiffre n'a pas de sens et ne doit pas servir de cible
 - `target.rate_needed_90d` breaks if: signale par l'audit: marque derive alors que sa propre methode dit que ses deux hypotheses sont fausses (depart de zero, rang 1 immobile). Un calcul juste sur une premisse fausse reste faux. Sans la pente du rang 1, ce chiffre n'a pas de sens et ne doit pas servir de cible
@@ -158,7 +190,7 @@ A reading that fits, with the thing that would break it named.
 - `fishing.value_driver` breaks if: la rarete pourrait piloter la DISTRIBUTION des poids plutot que le prix a la livre, ce qui donnerait la meme observation sur n=2
 - `stocks.window_metrics_are_rolling` breaks if: un reset de journee entre les deux lectures produirait la meme observation; il faut trois lectures rapprochees pour trancher, ce que le collecteur fournira
 
-### assumed (106)
+### assumed (122)
 
 Asserted by the site's own docs, or inherited from July. Never watched happen. Treat as suspect.
 
@@ -236,6 +268,15 @@ Asserted by the site's own docs, or inherited from July. Never watched happen. T
 | `event:chest` | fenetre_de_reponse | 30 s |  | raw/commands.txt |
 | `event:frenzy` | duree_par_defaut | 30 s |  | raw/commands.txt |
 | `event:frenzy` | cooldown_de_fish_ramene_a_zero | True |  | raw/commands.txt |
+| `infra:availability` | correct_model | a time-varying duty cycle measured continuously by the sentinel, not a constant p; farm during up-windows, backoff during down-windows (which the shoovyclient already does) |  | avail.jsonl + client.go |
+| `infra:leaderboard` | days_solo | 11.5 days |  | 886890 / 77300, fishing only |
+| `infra:leaderboard` | highest_leverage | account count (fishing is per-account cooldown-bound, ~linear speedup); duty cycle uncontrollable; catch value n=2 must be re-sampled |  | optimal-path model |
+| `infra:leaderboard` | optimal_sequence | per up-window per account: !daily (best/req) -> !fish (engine) -> !collect if T* -> !tip surplus/36h; never stocks/casino |  | credits/request ranking |
+| `infra:leaderboard` | REVISED_optimal | two phases: (1) bootstrap with fishing+daily to afford the first illegal business, (2) reinvest business income, fill 6 slots + managers, climb to Meth Labs. Business is the engine (best credits/request by ~1000x), fishing only bootstraps. 6 Meth Labs+mgr = 364500 cr/h, rank1 in ~2h post-capital. |  | business catalog + credits/request analysis |
+| `infra:leaderboard` | route_per_board | business engine -> richest (992k, deterministic); stock oracle -> traders (788k profit) + portfolios (330k value, lowest reliable bar); gamblers (222k) is a TRAP (casino -EV, luck not strategy); criminals = rob volume via crime sub-game. Chase portfolios/traders via the oracle, compound business toward richest, ignore gamblers. |  | leaderboards thresholds + edge analysis |
+| `infra:shoovy.wtf` | 429_targeted_at_our_requests | False |  | 1 req/5min from 1 IP cannot trip a caller-limiter; heterogeneous failures (429 + 60s timeout + 30.5s latency) are backend-flap signature, not limiter |
+| `infra:shoovy.wtf` | needs_tls_impersonation | plain net/http gets 429 during Cloudflare challenge windows; needs bogdanfinn/tls-client Chrome profile (as clawd uses) to pass. The Go sentinel under-reports availability for the same reason. |  | discriminating test 2026-08-20 |
+| `mechanic:business` | collect_credits_per_request | Meth Lab 162000 base / 486000 w-manager per single collect (8h till); vs fishing 210.5/req. Business collect is ~1000x fishing per request. |  | catalog income x till_hours x manager_mult |
 | `mechanic:business` | collecter_cache_tout_le_till_du_vol | True |  | raw/commands.txt |
 | `mechanic:business` | moment_de_la_collecte_ninflue_pas_sur_le_montant_gagne | True |  | raw/commands.txt |
 | `mechanic:business` | taux_plein_seulement_en_live | True |  | raw/commands.txt |
@@ -246,9 +287,14 @@ Asserted by the site's own docs, or inherited from July. Never watched happen. T
 | `mechanic:business` | fraction_du_till_cachee_par_la_securite | 0.75 fraction |  | raw/commands.txt |
 | `mechanic:business` | till_sature | True |  | raw/commands.txt |
 | `mechanic:business` | capacite_de_lavage_inutilisee_saccumule | True |  | raw/commands.txt |
+| `mechanic:casino` | full_ev_table | cases 0.99, keno ~0.99, plinko 0.9916 best, dragon ~0.99, coinflip 0.97, rps 0.9733, wheel best-cat 0.96. Every game negative-EV; 1% floor games least bad, wheel/coinflip/rps worst. Rakeback 0.5% -> best net ~-0.5%. |  | /api/games/info full odds computed |
 | `mechanic:casino` | multiplicateur_de_gain | 2 |  | raw/commands.txt |
+| `mechanic:casino` | verdict_ev | negative on every game; best is plinko 11/high at -0.84%, rakeback 0.5% leaves it -0.34% net; cannot grind to rank 1 |  | games_info.json + api_rakeback.json |
 | `mechanic:casino` | fenetre_pour_repondre | 60 s |  | raw/commands.txt |
 | `mechanic:casino` | challenger_rembourse_si_pas_de_reponse | True |  | raw/commands.txt |
+| `mechanic:casino_coinflip` | rtp | 0.97 fraction |  | games_info.json coinflip_multiplier=1.94, 0.5*m |
+| `mechanic:casino_plinko` | rtp_best | 0.9916 fraction |  | games_info.json plinko_tables 11/high, binomial p=0.5 |
+| `mechanic:casino_rps` | rtp | 0.9733 fraction |  | games_info.json rps_multiplier=1.92, m/3+1/3 |
 | `mechanic:chat_income` | periode_de_gain | 60 s |  | raw/commands.txt |
 | `mechanic:crime` | amende_non_couverte_force_la_vente_de_ses_propres_actions | True |  | raw/commands.txt |
 | `mechanic:crime` | gros_butin_force_la_vente_des_actions_de_la_victime | True |  | raw/commands.txt |
@@ -256,12 +302,14 @@ Asserted by the site's own docs, or inherited from July. Never watched happen. T
 | `mechanic:daily` | periode | 20 h |  | configs de juillet du repo |
 | `mechanic:fishing` | recette_bait | 3 communs |  | raw/commands.txt |
 | `mechanic:fishing` | recette_lure | 5 uncommons |  | raw/commands.txt |
+| `mechanic:fishing` | credits_per_day_at_duty | 77300 credits/day/account |  | 210.5 cr x 20 casts/h x 24 x 0.765 duty |
 | `mechanic:fishing` | especes_requises_pour_prestige | 100 especes |  | raw/commands.txt |
 | `mechanic:raffles` | raffle_annulee_rembourse_tout_le_monde | True |  | raw/commands.txt |
 | `mechanic:raffles` | credits_depenses_meme_en_cas_de_perte | True |  | raw/commands.txt |
 | `mechanic:raffles` | cotes_proportionnelles_au_nombre_de_tickets | True |  | raw/commands.txt |
 | `mechanic:stocks` | achat_fait_monter_le_prix | True |  | raw/commands.txt |
 | `mechanic:stocks` | fenetre_de_variation_affichee | 1 h |  | raw/commands.txt |
+| `mechanic:stocks` | oracle_front_run | drivers (feed events, casino_lobby counts, Pusher chat) are observable seconds before the ~32s price tick prices them in; read the input, trade the ticker before it reprices, exit after. AMM depth 250k fee 1%, move must exceed fee. Needs a session to trade. |  | feed + stocks/history + games depth |
 | `mechanic:stocks` | vente_fait_baisser_le_prix | True |  | raw/commands.txt |
 | `mechanic:stocks` | cooldown_entre_trades | 8 s |  | configs de juillet du repo |
 | `mechanic:stocks` | seuil_entree | -0.03 fraction |  | configs de juillet du repo |
@@ -271,15 +319,24 @@ Asserted by the site's own docs, or inherited from July. Never watched happen. T
 | `mechanic:treasure` | fouille_jamais_pour_rien | True |  | raw/commands.txt |
 | `mechanic:tts` | liens_interdits | True |  | raw/commands.txt |
 
-### refuted (9)
+### refuted (18)
 
 Believed, then disproved. Kept because the reversals are data.
 
 | subject | fact | value | n | source |
 |---|---|---|---|---|
 | `infra:availability` | debit_du_chat_proxy_de_sante_backend | False | 368 | chat.jsonl |
+| `infra:availability` | taux_reponses_utilisables | 0.158 fraction | 19 | requests.jsonl + chat.jsonl, correlation temporelle |
+| `infra:availability` | la_disponibilite_n_est_pas_un_nombre_unique | lecture triviale 0.158, traitement d'une commande 0.038 |  | cascade de facts.py check |
+| `infra:availability` | probabilite_qu_un_appel_aboutisse | 0.158 fraction |  | cascade de facts.py check |
+| `infra:availability` | probabilite_qu_un_enchainement_de_2_appels_aboutisse | 0.025 fraction |  | facts.py cascade |
+| `infra:availability` | probabilite_qu_un_enchainement_de_3_appels_aboutisse | 0.0039 fraction |  | facts.py cascade |
+| `infra:availability` | un_read_reussi_ne_garantit_pas_qu_une_action_aboutit | True |  | facts.py cascade |
+| `infra:availability` | regle_de_lecture_de_la_disponibilite | retryable: 1-(1-p)^k sur la fenetre; deadline: p^etapes |  | facts.py cascade |
 | `infra:kick` | chat_ferme_aux_serveurs | False |  | pusher_probe.py |
 | `infra:shoovy.wtf` | ip_bannie_par_nos_sondes | False |  | FINDINGS.md |
+| `mechanic:business` | tentatives_par_collecte_reussie | 6.3 appels |  | facts.py cascade |
+| `mechanic:business` | rang_d_achat_du_manager | premier achat rentable |  | facts.py cascade |
 | `mechanic:fishing` | lancers_par_heure_reels | 3.16 casts/h |  | budget.py |
 | `mechanic:fishing` | lancers_par_heure_reels_avec_reessai_toutes_les_10s | 19.1 casts/h |  | cascade de facts.py check |
 | `mechanic:fishing` | lancers_par_heure_reels_avec_reessai_toutes_les_30s | 12.87 casts/h |  | cascade de facts.py check |
@@ -299,7 +356,10 @@ A fact moving to `refuted` invalidates everything below it.
 | `business.manager_priority` | `business.manager_request_divisor`, `business.attempts_per_successful_collect` |
 | `business.manager_request_divisor` | `business.optimal_period`, `business.manager_capacity_multiplier` |
 | `business.optimal_period` | `business.till_stops_when_full` |
+| `casino.best_case_net` | `casino.rakeback_rate`, `casino.client_has_no_odds` |
+| `casino.coinflip_rtp` | `casino.rakeback_rate` |
 | `casino.ev_undecidable_offline` | `casino.client_has_no_odds` |
+| `casino.verdict` | `casino.best_case_net` |
 | `event.chest_capture_probability` | `chat.pusher_route_works`, `chest.response_window` |
 | `fishing.casts_per_hour_effective_retry10s` | `fishing.casts_per_hour_nominal`, `infra.call_success_probability`, `fishing.cooldown_seconds` |
 | `fishing.casts_per_hour_effective_retry30s` | `fishing.casts_per_hour_nominal`, `infra.call_success_probability`, `fishing.cooldown_seconds` |
@@ -318,7 +378,7 @@ A fact moving to `refuted` invalidates everything below it.
 | `target.rate_needed_30d` | `leaderboard.rank1` |
 | `target.rate_needed_90d` | `leaderboard.rank1` |
 
-*Rendered 2026-08-19 21:57.*
+*Rendered 2026-08-21 23:34.*
 
 <!-- FACTS:END -->
 
@@ -913,6 +973,54 @@ demoted to `candidate` at confidence 0.1 and must not be used as targets until t
 leader's slope is sampled. And the store has a naming split to clean up:
 `trader.*` and `stocks.*` ids both describe `mechanic:stocks`, while the schema's
 `endpoint:` and `constant:` prefixes are declared but never used.
+
+## Correction: the site was not down, we were being filtered
+
+This overturns the availability finding above, and with it every number derived
+from it. The witness is the game's own bot, timestamped and independent of us.
+
+**19 Aug, 21:04:51.** The game announced two real fishing catches with credit
+values attached, which requires its data layer. At that same minute our requests
+were failing: five transport errors and a 502.
+
+**20 Aug, 22:00–23:00.** 122 requests from us, not one success. And at 22:23 the
+response changed from 429 to **403**, staying there for 35 minutes. A sustained
+403 is a refusal aimed at the caller. An overloaded backend does not answer that
+way, consistently, for half an hour.
+
+**21 Aug, 07:00–14:00.** 46 to 60 requests an hour, every one a 200, for eight
+consecutive hours. A site that is chronically down does not do that.
+
+So the reading was wrong. There *was* a genuine outage at the very start — a real
+browser took a Cloudflare 502 on the evening of 19 Aug, and that part stands. The
+mistake was generalising that first hour to everything after it. The long 429 and
+403 stretches were our client being gated, not the service failing.
+
+Which means `infra.availability.v1` = 0.158 measured **our own blocking**, not the
+site's health. It is now refuted, and `facts.py cascade` propagated that through
+six dependent facts in two waves: the per-call success probability, the two- and
+three-step compounding, the collection attempt count, the manager priority, and
+the retry-versus-deadline split.
+
+The reasoning in those facts is not wrong. The formulas hold. What died is the
+input, and it needs re-measuring with a client that is not being filtered.
+
+This is the third reversal in this study, and the pattern behind all three is the
+same: a measurement taken from one vantage point, generalised without a witness.
+The fix each time was the same too — find something that observes the system
+independently. Here it was other people's play, arriving over a channel that was
+never blocked.
+
+### A separate thing the witness turned up
+
+**19 Aug, 23:55:17** — `A chest with 20,000 credits just dropped! Type W in the
+next 30s`. Thirty seconds later: `The chest closed with no takers`.
+
+Twenty thousand credits, 2.5 % of the then rank-1 balance, evaporated because
+nobody answered. One observation, at a quiet hour, so it proves nothing about the
+general case. But it is the first hard number on what a chest is worth, and it
+dwarfs the grind: at the observed catch value of about 210 credits, that single
+unclaimed chest was worth roughly 95 casts.
 
 ## Open questions
 
