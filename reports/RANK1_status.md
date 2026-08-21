@@ -3,12 +3,20 @@
 Goal: reach rank 1 on shoovy.wtf. This doc is the current state of that pursuit; the dated
 files in this folder are the day-by-day analysis, `ANALYSE_complete_recursive.md` is the model.
 
-## Layer 0 flipped: the site is UP (2026-08-20 ~00:28 UTC)
+## Layer 0, 2026-08-21: new blocker, same shape — Cloudflare challenge replaced Railway 429/502
+
+As of **2026-08-20T20:24:20Z** the sentinel started seeing Cloudflare 403 "Just a moment"
+(a JS challenge page) instead of the earlier 429/502 sick-deployment pattern. Last 24h:
+75/288 probes = 200 (**~26% uptime**), 111/288 = 403 challenge, rest timeout. This is a
+harder wall than a rate limiter — no client-side pacing gets a plain HTTP client past a JS
+challenge — but it is not a hard block either: 1 in 4 probes still lands clean, so the
+sentinel keeps sampling. Watch whether the 403 rate trends up (hardening) or down (transient).
+
+## Layer 0, 2026-08-20 (superseded above): the site is UP (~00:28 UTC that day)
 
 Measured from the Claw sentinel and from the PC: `GET /api/stocks` → 200, ~0.6–1.8 s,
-5 tickers, `up:true`. Yesterday's 429/502 was a transient sick-deployment window, not a ban
-(consistent with the refuted ban hypothesis). Availability is now being sampled continuously
-so we stop guessing — see the sentinel below.
+5 tickers, `up:true`. That day's 429/502 was a transient sick-deployment window, not a ban
+(consistent with the refuted ban hypothesis). Superseded by the Cloudflare challenge above.
 
 ## Deployed to the Claw (192.168.1.59, riscv64)
 
@@ -36,8 +44,16 @@ Read the availability history any time:
 
 The earning loop the analysis trusts is fishing + daily + tips into one account. At full
 availability, fishing alone (~19 casts/h × ~210 cr) clears even the aggressive catch-up pace.
-The market (1 % fee) is near break-even; the casino is a bonus only if `games_info` odds show a
-positive-EV game or the rakeback covers the edge — that is the next thing to compute.
+The market (1 % fee) is near break-even.
+
+**Casino EV computed 2026-08-21** (`data/study/casino_ev.py` logic re-run manually against
+`live/2026-08-20/games_info.json`, literal `rtp`/multiplier tables, not guessed): cases and
+keno both carry a flat literal **99.0% RTP** (1% house edge) across every difficulty/pick
+tier; best plinko config (11-row high risk) is 99.16% RTP (0.84% edge); wheel and
+coinflip/RPS sit worse, 84–97% RTP depending on bet tier. This is thin enough that
+**rakeback ≥1% would flip cases/keno/plinko-high to breakeven or positive EV** — but the
+rakeback rate itself is session-gated (`/api/rakeback`) and still uncaptured. That single
+authenticated read resolves the casino verdict.
 
 **Blocker for actual farming**: it needs valid `shoovy_session` + Kick cookies per worker
 account, and those are ~1 month expired (`accounts.json` absent). Getting them requires a human

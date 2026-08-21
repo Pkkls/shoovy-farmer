@@ -69,11 +69,23 @@ def load():
 
 
 def current():
-    """Latest record per fact id. Earlier records stay in the file as history."""
+    """Latest record per fact id. Earlier records stay in the file as history.
+
+    Records with no id are skipped rather than fatal: a concurrent writer once
+    appended a batch in a different shape, and losing the whole store to one
+    malformed line is worse than ignoring it. `orphans()` lists them so they can
+    be migrated instead of quietly lost.
+    """
     out = {}
     for rec in load():
-        out[rec["id"]] = rec
+        if "id" in rec:
+            out[rec["id"]] = rec
     return out
+
+
+def orphans():
+    """Records that predate or violate the schema, kept for migration."""
+    return [r for r in load() if "id" not in r]
 
 
 def _fmt(rec):
